@@ -5,6 +5,12 @@ body {
   font-family: var(--font-inter);
 }
 
+html,
+body {
+  background-color: #ffffff;
+  color: #111827;
+}
+
 .gear {
   position: absolute;
   top: 41; /* adjust ito depende sa exact spot ng E */
