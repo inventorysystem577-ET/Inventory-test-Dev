@@ -5,6 +5,26 @@ const normalizeName = (value = "") =>
 
 const toNumber = (value) => Number(value || 0);
 
+const formatSupabaseError = (error, fallback = "Database operation failed.") => {
+  if (!error) return fallback;
+  const code = error.code || "";
+  const message = error.message || "";
+  const details = error.details || "";
+  const hint = error.hint || "";
+  const raw = `${code} ${message} ${details} ${hint}`.toLowerCase();
+
+  if (
+    code === "PGRST204" ||
+    code === "42703" ||
+    (raw.includes("description") &&
+      (raw.includes("schema cache") || raw.includes("column")))
+  ) {
+    return "Missing 'description' column in DB. Run the SQL migration for product_in and products_out.";
+  }
+
+  return [code, message, details, hint].filter(Boolean).join(" | ") || fallback;
+};
+
 const parseComponentCandidates = (componentName) => {
   const raw = (componentName || "").split(/\s+or\s+/i).map((item) => item.trim());
   return raw.filter(Boolean);
@@ -274,6 +294,7 @@ export const upsertProductIn = async (data) => {
     ...data,
     shipping_mode: data.shipping_mode || null,
     client_name: data.client_name || null,
+    description: data.description || null,
     price:
       data.price === "" || data.price === null || data.price === undefined
         ? null
@@ -286,8 +307,13 @@ export const upsertProductIn = async (data) => {
     .select();
 
   if (insertError) {
-    console.error("Supabase insert error:", insertError);
-    return null;
+    console.error("Supabase insert error:", {
+      code: insertError.code,
+      message: insertError.message,
+      details: insertError.details,
+      hint: insertError.hint,
+    });
+    return { __error: formatSupabaseError(insertError, "Error adding/updating product") };
   }
 
   return insertedData[0];
@@ -378,6 +404,7 @@ export const deductProductIn = async (product_name, quantity) => {
 
   let remainingToDeduct = requestedQty;
   const deductedComponentsMap = new Map();
+  let carriedDescription = null;
 
   for (const row of rows) {
     if (remainingToDeduct <= 0) break;
@@ -387,6 +414,10 @@ export const deductProductIn = async (product_name, quantity) => {
 
     const consumedQty = Math.min(rowQty, remainingToDeduct);
     const newQuantity = rowQty - consumedQty;
+    if (!carriedDescription && consumedQty > 0) {
+      const sourceDescription = (row.description || "").toString().trim();
+      if (sourceDescription) carriedDescription = sourceDescription;
+    }
 
     const existingComponents = Array.isArray(row.components)
       ? row.components
@@ -435,6 +466,7 @@ export const deductProductIn = async (product_name, quantity) => {
   return {
     success: true,
     deductedComponents,
+    description: carriedDescription,
     remainingQuantity: totalAvailable - requestedQty,
   };
 };
@@ -449,6 +481,7 @@ export const insertProductOut = async (data) => {
     ...data,
     shipping_mode: data.shipping_mode || null,
     client_name: data.client_name || null,
+    description: data.description || null,
     price:
       data.price === "" || data.price === null || data.price === undefined
         ? null
@@ -461,7 +494,12 @@ export const insertProductOut = async (data) => {
     .select();
 
   if (error) {
-    console.error("Supabase insert error:", error);
+    console.error("Supabase insert error:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return { data: null, error };
   }
 

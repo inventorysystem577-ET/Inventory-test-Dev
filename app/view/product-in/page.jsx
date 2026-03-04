@@ -48,6 +48,7 @@ export default function ProductInPage() {
   const [stockInItems, setStockInItems] = useState([]);
   const [productSuggestions, setProductSuggestions] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [description, setDescription] = useState("");
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState(0);
   const [date, setDate] = useState("");
@@ -108,6 +109,9 @@ export default function ProductInPage() {
 
   const normalizeName = (value = "") =>
     value.toString().trim().toLowerCase().replace(/\s+/g, " ");
+  const descriptionSuggestions = Array.from(
+    new Set(items.map((item) => (item.description || "").trim()).filter(Boolean)),
+  ).sort((a, b) => a.localeCompare(b));
 
   const computeComponentAvailability = (
     productName,
@@ -335,24 +339,20 @@ export default function ProductInPage() {
       alternativeRequest.time_in,
       alternativeRequest.components,
       {
+        description: alternativeRequest.description || description,
         price: totalPrice,
       },
       { allowAlternatives: true },
     );
 
     if (!result?.success) {
-      const missingText =
-        result?.missingComponents?.length > 0
-          ? ` Missing: ${result.missingComponents
-              .map(
-                (item) =>
-                  `${item.component} (${item.available}/${item.needed})`,
-              )
-              .join(", ")}`
-          : "";
-      setErrorBar(
-        `${result?.message || "Unable to add Product In."}${missingText}`,
-      );
+      if (result?.missingComponents?.length > 0) {
+        setMissing(result.missingComponents);
+        setShowMissingComponentsModal(true);
+        setErrorBar("");
+        return;
+      }
+      setErrorBar(result?.message || "Unable to add Product In.");
       return;
     }
 
@@ -496,7 +496,10 @@ export default function ProductInPage() {
       dateValue,
       timeInValue,
       components,
-      { price: totalPrice },
+      {
+        description: description.trim(),
+        price: totalPrice,
+      },
     );
 
     if (!result?.success) {
@@ -507,6 +510,7 @@ export default function ProductInPage() {
           date: dateValue,
           time_in: timeInValue,
           components,
+          description: description.trim(),
           alternatives: result.alternativeOptions || [],
         });
         return;
@@ -515,21 +519,11 @@ export default function ProductInPage() {
       if (result?.missingComponents?.length > 0) {
         setMissing(result.missingComponents);
         setShowMissingComponentsModal(true);
+        setErrorBar("");
+        return;
       }
 
-      const missingText =
-        result?.missingComponents?.length > 0
-          ? ` Missing: ${result.missingComponents
-              .map(
-                (item) =>
-                  `${item.component} (${item.available}/${item.needed})`,
-              )
-              .join(", ")}`
-          : "";
-
-      setErrorBar(
-        `${result?.message || "Unable to add Product In."}${missingText}`,
-      );
+      setErrorBar(result?.message || "Unable to add Product In.");
       return;
     }
 
@@ -550,6 +544,7 @@ export default function ProductInPage() {
     await loadStockInItems();
 
     setSelectedProduct("");
+    setDescription("");
     setQty(1);
     setPrice(0);
     setDate("");
@@ -652,8 +647,8 @@ export default function ProductInPage() {
                 <div
                   className={`mb-4 rounded-lg border px-4 py-3 text-sm flex items-start gap-2 ${
                     darkMode
-                      ? "bg-red-900/20 border-red-800 text-red-300"
-                      : "bg-red-50 border-red-200 text-red-700"
+                      ? "bg-[#111827] border-[#374151] text-[#D1D5DB]"
+                      : "bg-[#F9FAFB] border-[#E5E7EB] text-[#374151]"
                   }`}
                 >
                   <AlertTriangle className="w-4 h-4 mt-0.5" />
@@ -705,9 +700,9 @@ export default function ProductInPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 xl:grid-cols-8 gap-6 mb-4">
                 {/* Product */}
-                <div>
+                <div className="lg:col-span-2">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -745,8 +740,36 @@ export default function ProductInPage() {
                   )}
                 </div>
 
+                {/* Description */}
+                <div className="lg:col-span-2">
+                  <label
+                    className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
+                      darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
+                    }`}
+                  >
+                    <Package className="w-4 h-4" /> Description
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter product description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    list="product-in-description-suggestions"
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
+                    }`}
+                  />
+                  <datalist id="product-in-description-suggestions">
+                    {descriptionSuggestions.map((suggestion) => (
+                      <option key={suggestion} value={suggestion} />
+                    ))}
+                  </datalist>
+                </div>
+
                 {/* Price */}
-                <div>
+                <div className="lg:col-span-1">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -769,7 +792,7 @@ export default function ProductInPage() {
                 </div>
 
                 {/* Quantity */}
-                <div>
+                <div className="lg:col-span-1">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -792,7 +815,7 @@ export default function ProductInPage() {
                 </div>
 
                 {/* Date */}
-                <div>
+                <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 lg:ml-2 xl:ml-4">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -808,13 +831,13 @@ export default function ProductInPage() {
                       darkMode
                         ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
                         : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
-                    }`}
+                    } min-w-[180px]`}
                     required
                   />
                 </div>
 
                 {/* Time In */}
-                <div>
+                <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 lg:ml-2 xl:ml-4">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -822,11 +845,11 @@ export default function ProductInPage() {
                   >
                     <Clock className="w-4 h-4" /> Time In
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <select
                       value={timeHour}
                       onChange={(e) => setTimeHour(e.target.value)}
-                      className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all ${
+                      className={`border rounded-lg px-3 py-2 flex-1 min-w-[72px] focus:outline-none focus:ring-2 transition-all ${
                         darkMode
                           ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
                           : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
@@ -841,7 +864,7 @@ export default function ProductInPage() {
                     <select
                       value={timeMinute}
                       onChange={(e) => setTimeMinute(e.target.value)}
-                      className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all ${
+                      className={`border rounded-lg px-3 py-2 flex-1 min-w-[72px] focus:outline-none focus:ring-2 transition-all ${
                         darkMode
                           ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
                           : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
@@ -859,7 +882,7 @@ export default function ProductInPage() {
                     <select
                       value={timeAMPM}
                       onChange={(e) => setTimeAMPM(e.target.value)}
-                      className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all ${
+                      className={`border rounded-lg px-3 py-2 w-[88px] min-w-[88px] shrink-0 focus:outline-none focus:ring-2 transition-all ${
                         darkMode
                           ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
                           : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"

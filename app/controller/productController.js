@@ -60,8 +60,13 @@ export const handleAddProductIn = async (
     components: formattedComponents,
     shipping_mode: meta.shipping_mode || null,
     client_name: meta.client_name || null,
+    description: meta.description || null,
     price: meta.price,
   });
+
+  if (result?.__error) {
+    return { success: false, message: result.__error };
+  }
 
   if (!result) {
     return { success: false, message: "Error adding/updating product" };
@@ -119,6 +124,7 @@ export const handleAddProductOut = async (
     components: deductResult.deductedComponents,
     shipping_mode: meta.shipping_mode || null,
     client_name: meta.client_name || null,
+    description: deductResult.description || null,
     price: meta.price,
   });
 
