@@ -15,7 +15,7 @@ export default function TopNavbar({
   darkMode,
   setDarkMode,
 }) {
-  const { userEmail, displayName, loading } = useAuth();
+  const { userEmail, displayName, role, loading } = useAuth();
   const router = useRouter();
 
   const displayedName = getDisplayName(null, userEmail);
@@ -113,7 +113,7 @@ export default function TopNavbar({
                       darkMode ? "text-[#D1D5DB]" : "text-[#6B7280]"
                     }`}
                   >
-                    Admin
+                    {(role || "staff").toString().toUpperCase()}
                   </p>
                 </>
               )}

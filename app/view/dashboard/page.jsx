@@ -25,6 +25,7 @@ import {
   fetchProductInController,
   fetchProductOutController,
 } from "../../controller/productController"; // Product IN/OUT
+import { buildProductCode, buildSku } from "../../utils/inventoryMeta";
 
 export default function page() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,6 +60,7 @@ export default function page() {
     low: 0,
     available: 0,
   });
+  const [inventorySearch, setInventorySearch] = useState("");
 
   const router = useRouter();
 
@@ -182,12 +184,21 @@ export default function page() {
   };
 
   // Get items that need attention (parcel items)
-  const itemsNeedingAttention = stockItems.filter((item) => item.quantity < 10);
+  const searchKey = inventorySearch.trim().toLowerCase();
+  const itemsNeedingAttention = stockItems.filter((item) => {
+    return item.quantity < 10;
+  });
 
   // Get products that need attention
-  const productsNeedingAttention = productIn.filter(
-    (item) => item.quantity < 10,
-  );
+  const productsNeedingAttention = productIn.filter((item) => {
+    if (item.quantity >= 10) return false;
+    if (!searchKey) return true;
+    return (
+      (item.product_name || "").toLowerCase().includes(searchKey) ||
+      buildProductCode(item).toLowerCase().includes(searchKey) ||
+      buildSku(item).toLowerCase().includes(searchKey)
+    );
+  });
 
   // Combined alert count
   const totalAlertsCount =
@@ -296,10 +307,10 @@ export default function page() {
               </div>
             </div>
 
-            {/* Summary Cards - Row 2: Parcel Stock Status */}
+            {/* Summary Cards - Row 2: Components Stock Status */}
             <div className="mb-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                📦 Parcel Stock Status
+                📦 Components Stock Status
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Out of Stock */}
@@ -695,6 +706,32 @@ export default function page() {
             )}
 
             {/* Tables Section */}
+            <div
+              className={`rounded-xl border p-4 mb-6 ${
+                darkMode
+                  ? "bg-[#1F2937] border-[#374151]"
+                  : "bg-white border-[#E5E7EB]"
+              }`}
+            >
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                Search Product Inventory (by code, product, SKU)
+              </label>
+              <input
+                type="text"
+                value={inventorySearch}
+                onChange={(e) => setInventorySearch(e.target.value)}
+                placeholder="e.g. PRD-00001, SKU-00001, product name"
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                  darkMode
+                    ? "border-[#374151] focus:ring-[#60A5FA] bg-[#111827] text-white"
+                    : "border-[#D1D5DB] focus:ring-[#1E40AF] bg-white text-black"
+                }`}
+              />
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Parcel Items Needing Attention */}
               <div
@@ -706,7 +743,7 @@ export default function page() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">
-                    Parcels Needing Attention
+                    Components Needing Attention
                   </h3>
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -725,7 +762,7 @@ export default function page() {
                       className={`${darkMode ? "bg-[#374151]" : "bg-gray-50"}`}
                     >
                       <tr>
-                        {["Item", "Stock", "Status"].map((head) => (
+                        {["Item", "Stock Quantity", "Status"].map((head) => (
                           <th
                             key={head}
                             className={`px-4 py-2 text-center text-xs font-medium uppercase tracking-wider ${
@@ -815,7 +852,13 @@ export default function page() {
                       className={`${darkMode ? "bg-[#374151]" : "bg-gray-50"}`}
                     >
                       <tr>
-                        {["Product", "Stock", "Status"].map((head) => (
+                        {[
+                          "Product",
+                          "Code",
+                          "SKU",
+                          "Stock Quantity",
+                          "Status",
+                        ].map((head) => (
                           <th
                             key={head}
                             className={`px-4 py-2 text-center text-xs font-medium uppercase tracking-wider ${
@@ -834,7 +877,7 @@ export default function page() {
                     >
                       {productsNeedingAttention.length === 0 ? (
                         <tr>
-                          <td colSpan="3" className="px-4 py-8 text-center">
+                          <td colSpan="5" className="px-4 py-8 text-center">
                             <p
                               className={`text-sm ${
                                 darkMode ? "text-gray-400" : "text-gray-600"
@@ -856,6 +899,12 @@ export default function page() {
                           >
                             <td className="px-4 py-3 text-sm text-center align-middle">
                               {item.product_name}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-center align-middle">
+                              {buildProductCode(item)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-center align-middle">
+                              {buildSku(item)}
                             </td>
                             <td className="px-4 py-3 text-sm text-center align-middle">
                               {item.quantity}

@@ -25,6 +25,13 @@ export default function LoginPage() {
       onSuccess: async (response) => {
         console.log("Logged in user:", response.user);
         alert("Login Successful!");
+        const role = (response?.user?.user_metadata?.role || "")
+          .toString()
+          .toLowerCase();
+        if (role === "staff") {
+          router.push("/view/product-in");
+          return;
+        }
         router.push("/view/dashboard");
       },
       onError: (error) => {

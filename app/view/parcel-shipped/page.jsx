@@ -101,6 +101,11 @@ export default function Page() {
 
   const handleAddItem = async (e) => {
     e.preventDefault();
+    const confirmed = window.confirm(
+      "Confirm Stock In: Are you sure you want to add this item to stock in?",
+    );
+    if (!confirmed) return;
+
     const result = await handleAddParcelIn({
       name,
       date,
@@ -130,6 +135,7 @@ export default function Page() {
     setShippingMode("");
     setClientName("");
     setPrice("");
+    alert("Stock In recorded successfully.");
   };
 
   const indexOfLastItem = currentPage * itemsPerPage;

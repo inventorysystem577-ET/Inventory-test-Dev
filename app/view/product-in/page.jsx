@@ -28,6 +28,13 @@ import {
   fetchParcelItems,
   handleAddParcelIn,
 } from "../../utils/parcelShippedHelper";
+import { useAuth } from "../../hook/useAuth";
+import { isAdminRole } from "../../utils/roleHelper";
+import {
+  buildDescription,
+  buildProductCode,
+  buildSku,
+} from "../../utils/inventoryMeta";
 
 export default function ProductInPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -96,6 +103,8 @@ export default function ProductInPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const { role } = useAuth();
+  const isAdmin = isAdminRole(role);
 
   const normalizeName = (value = "") =>
     value.toString().trim().toLowerCase().replace(/\s+/g, " ");
@@ -171,7 +180,11 @@ export default function ProductInPage() {
         components: Array.isArray(item.components) ? item.components : [],
       }))
       .filter((item) => item.quantity > 0);
-    setItems(sanitizedData.sort((a, b) => b.id - a.id));
+    setItems(
+      sanitizedData.sort((a, b) =>
+        (a.product_name || "").localeCompare(b.product_name || ""),
+      ),
+    );
 
     const existingNames = sanitizedData
       .map((item) => item.product_name)
@@ -221,6 +234,10 @@ export default function ProductInPage() {
   const handleAddItem = async (e) => {
     e.preventDefault();
     if (!selectedProduct || !qty || !date) return;
+    const confirmed = window.confirm(
+      "Confirm Product In: Are you sure you want to add this product to stock in?",
+    );
+    if (!confirmed) return;
 
     const quantityToAdd = parseInt(qty);
     const normalizedSelectedProduct = selectedProduct.trim();
@@ -231,6 +248,10 @@ export default function ProductInPage() {
 
     const time_in = `${timeHour}:${timeMinute} ${timeAMPM}`;
     if (!product) {
+      if (!isAdmin) {
+        setErrorBar("Only admin can add a new/custom product.");
+        return;
+      }
       setCustomComponentsError("");
       setShowCustomComponentsModal(true);
       return;
@@ -270,6 +291,10 @@ export default function ProductInPage() {
   };
 
   const handleSubmitCustomProduct = async () => {
+    if (!isAdmin) {
+      setCustomComponentsError("Only admin can add a new/custom product.");
+      return;
+    }
     if (!selectedProduct || !qty || !date) {
       setCustomComponentsError("Fill all required Product In fields first.");
       return;
@@ -877,6 +902,9 @@ export default function ProductInPage() {
                     <tr>
                       {[
                         "PRODUCT NAME",
+                        "PRODUCT CODE",
+                        "SKU",
+                        "DESCRIPTION",
                         "QUANTITY",
                         "DATE",
                         "TIME IN",
@@ -899,7 +927,7 @@ export default function ProductInPage() {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td
-                          colSpan="5"
+                          colSpan="8"
                           className={`text-center p-8 sm:p-12 ${
                             darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
                           } animate__animated animate__fadeIn`}
@@ -930,6 +958,15 @@ export default function ProductInPage() {
                         >
                           <td className="p-3 sm:p-4 text-center align-middle font-semibold text-sm sm:text-base whitespace-nowrap">
                             {item.product_name}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm whitespace-nowrap">
+                            {buildProductCode(item)}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm whitespace-nowrap">
+                            {buildSku(item)}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm">
+                            {buildDescription(item)}
                           </td>
                           <td className="p-3 sm:p-4 text-center align-middle">
                             <span

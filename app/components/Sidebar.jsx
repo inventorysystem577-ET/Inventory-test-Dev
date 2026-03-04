@@ -10,49 +10,74 @@ import {
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { handleLogout } from "../controller/logoutController";
+import { useAuth } from "../hook/useAuth";
+import { isAdminRole } from "../utils/roleHelper";
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { role } = useAuth();
+  const isAdmin = isAdminRole(role);
 
-  const menuItems = [
-    {
-      id: "Dashboard",
-      label: "Dashboard",
-      icon: BarChart3,
-      path: "/view/dashboard",
-    },
-    {
-      id: "Product In",
-      label: "Product In",
-      icon: ArrowDownToLine,
-      path: "/view/product-in",
-    },
-    {
-      id: "Product Out",
-      label: "Product Out",
-      icon: ArrowUpFromLine,
-      path: "/view/product-out",
-    },
-    {
-      id: "Parcel Shipped",
-      label: "Stock In",
-      icon: Package,
-      path: "/view/parcel-shipped",
-    },
-    {
-      id: "Parcel Delivery",
-      label: "Stock Out",
-      icon: PackageOpen,
-      path: "/view/parcel-delivery",
-    },
-    {
-      id: "Inventory Stock",
-      label: "Inventory",
-      icon: Activity,
-      path: "/view/out-of-stock",
-    },
-  ];
+  const menuItems = isAdmin
+    ? [
+        {
+          id: "Dashboard",
+          label: "Dashboard",
+          icon: BarChart3,
+          path: "/view/dashboard",
+        },
+        {
+          id: "Product In",
+          label: "Product In",
+          icon: ArrowDownToLine,
+          path: "/view/product-in",
+        },
+        {
+          id: "Product Out",
+          label: "Product Out",
+          icon: ArrowUpFromLine,
+          path: "/view/product-out",
+        },
+        {
+          id: "Parcel Shipped",
+          label: "Components Stock In",
+          icon: Package,
+          path: "/view/parcel-shipped",
+        },
+        {
+          id: "Parcel Delivery",
+          label: "Components Stock Out",
+          icon: PackageOpen,
+          path: "/view/parcel-delivery",
+        },
+        {
+          id: "Inventory Stock",
+          label: "Inventory",
+          icon: Activity,
+          path: "/view/out-of-stock",
+        },
+      ]
+    : [
+        {
+          id: "Product In",
+          label: "Monitoring and Adding",
+          icon: ArrowDownToLine,
+          path: "/view/product-in",
+        },
+      ];
+
+  const adminMenuItems = isAdmin
+    ? [
+        {
+          id: "Admin Control Panel",
+          label: "Admin Control Panel",
+          icon: Activity,
+          path: "/view/admin-panel",
+        },
+      ]
+    : [];
+  const allMenuItems = [...menuItems, ...adminMenuItems];
 
   const handleMenuClick = (path) => {
     router.push(path);
@@ -92,7 +117,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
       >
         {sidebarOpen && (
           <nav className="p-4 sm:p-5 lg:p-4 space-y-1 h-full overflow-y-auto pb-20">
-            {menuItems.map((item) => {
+            {allMenuItems.map((item) => {
               const isActive = pathname === item.path;
               return (
                 <button

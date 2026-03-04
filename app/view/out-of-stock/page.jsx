@@ -27,6 +27,13 @@ import {
 import { deleteAllParcelInItems } from "../../controller/parcelShipped";
 import { clearParcelOutHistory } from "../../controller/parcelDelivery";
 import { fetchParcelItems } from "../../utils/parcelShippedHelper";
+import { useAuth } from "../../hook/useAuth";
+import { isAdminRole } from "../../utils/roleHelper";
+import {
+  buildDescription,
+  buildProductCode,
+  buildSku,
+} from "../../utils/inventoryMeta";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -53,6 +60,10 @@ export default function Page() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [isProcessingExport, setIsProcessingExport] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [parcelSearch, setParcelSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const { role } = useAuth();
+  const isAdmin = isAdminRole(role);
 
   const parcelTableRef = useRef(null);
   const productTableRef = useRef(null);
@@ -168,14 +179,28 @@ export default function Page() {
 
   // Filter parcel items based on selected status
   const filteredParcelItems = parcelItems.filter((item) => {
-    if (filterParcelStatus === "all") return true;
-    return getStockStatus(item.quantity) === filterParcelStatus;
+    const statusMatch =
+      filterParcelStatus === "all" ||
+      getStockStatus(item.quantity) === filterParcelStatus;
+    const keyword = parcelSearch.trim().toLowerCase();
+    if (!keyword) return statusMatch;
+    const code = buildProductCode(item, "CMP").toLowerCase();
+    const sku = buildSku(item).toLowerCase();
+    const name = (item.name || "").toLowerCase();
+    return statusMatch && (name.includes(keyword) || code.includes(keyword) || sku.includes(keyword));
   });
 
   // Filter product items based on selected status
   const filteredProductItems = productItems.filter((item) => {
-    if (filterProductStatus === "all") return true;
-    return getStockStatus(item.quantity) === filterProductStatus;
+    const statusMatch =
+      filterProductStatus === "all" ||
+      getStockStatus(item.quantity) === filterProductStatus;
+    const keyword = productSearch.trim().toLowerCase();
+    if (!keyword) return statusMatch;
+    const code = buildProductCode(item).toLowerCase();
+    const sku = buildSku(item).toLowerCase();
+    const name = (item.product_name || "").toLowerCase();
+    return statusMatch && (name.includes(keyword) || code.includes(keyword) || sku.includes(keyword));
   });
 
   // Count parcel items by status
@@ -210,11 +235,11 @@ export default function Page() {
 
     // Parcel Section
     doc.setFontSize(14);
-    doc.text("Parcel Inventory", 14, 40);
+    doc.text("Components Stock Status", 14, 40);
 
     const parcelTableColumn = [
       "Item Name",
-      "Current Stock",
+      "Stock Quantity",
       "Status",
       "Date Added",
     ];
@@ -237,11 +262,11 @@ export default function Page() {
     // Product Section
     const finalY = doc.lastAutoTable.finalY || 45;
     doc.setFontSize(14);
-    doc.text("Product Inventory", 14, finalY + 15);
+    doc.text("Product Inventory Status", 14, finalY + 15);
 
     const productTableColumn = [
       "Product Name",
-      "Current Stock",
+      "Stock Quantity",
       "Status",
       "Date Added",
     ];
@@ -265,6 +290,10 @@ export default function Page() {
   };
 
   const handleExportClick = () => {
+    if (!isAdmin) {
+      setExportError("Only admin can run export and delete controls.");
+      return;
+    }
     setExportError("");
     setShowExportModal(true);
   };
@@ -277,6 +306,10 @@ export default function Page() {
   };
 
   const handleExportDeleteAndSave = async () => {
+    if (!isAdmin) {
+      setExportError("Only admin can delete inventory records.");
+      return;
+    }
     setIsProcessingExport(true);
     setExportError("");
 
@@ -349,14 +382,19 @@ export default function Page() {
                     darkMode ? "text-gray-400" : "text-gray-600"
                   }`}
                 >
-                  Monitor stock levels for parcels and products
+                  Monitor stock levels for components and products
                 </p>
               </div>
 
               {/* Export Button */}
               <button
                 onClick={handleExportClick}
-                className="bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] text-white px-6 py-3 rounded-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 text-sm font-medium"
+                disabled={!isAdmin}
+                className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  isAdmin
+                    ? "bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] text-white hover:shadow-xl hover:scale-105 active:scale-95"
+                    : "bg-gray-400 text-white cursor-not-allowed"
+                }`}
               >
                 Export as PDF
               </button>
@@ -385,7 +423,7 @@ export default function Page() {
                     >
                       {parcelStatusCounts.out > 0 && (
                         <>
-                          <strong>Parcels:</strong> {parcelStatusCounts.out}{" "}
+                          <strong>Components:</strong> {parcelStatusCounts.out}{" "}
                           item
                           {parcelStatusCounts.out > 1 ? "s" : ""} out of stock
                         </>
@@ -433,7 +471,7 @@ export default function Page() {
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Package className="w-6 h-6 text-[#1e40af]" />
-                <h2 className="text-xl font-bold">Parcel Inventory</h2>
+                <h2 className="text-xl font-bold">Components Stock Status</h2>
               </div>
 
               {/* Parcel Status Summary Cards */}
@@ -572,13 +610,13 @@ export default function Page() {
               </div>
 
               {/* Parcel Filter Dropdown */}
-              <div className="mb-4">
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label
                   className={`block text-sm font-medium mb-2 ${
                     darkMode ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
-                  Filter Parcels by Status:
+                  Filter Component Less by Status:
                 </label>
                 <select
                   value={filterParcelStatus}
@@ -605,6 +643,17 @@ export default function Page() {
                     Out of Stock ({parcelStatusCounts.out})
                   </option>
                 </select>
+                <input
+                  type="text"
+                  value={parcelSearch}
+                  onChange={(e) => setParcelSearch(e.target.value)}
+                  placeholder="Search by component name, code, or SKU"
+                  className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm self-end ${
+                    darkMode
+                      ? "border-[#374151] focus:ring-[#60A5FA] focus:border-[#60A5FA] bg-[#111827] text-white"
+                      : "border-[#D1D5DB] focus:ring-[#1e40af] focus:border-[#1e40af] bg-white text-black"
+                  }`}
+                />
               </div>
 
               {/* Parcel Items Table */}
@@ -632,7 +681,10 @@ export default function Page() {
                       <tr>
                         {[
                           "Item Name",
-                          "Current Stock",
+                          "Product Code",
+                          "SKU",
+                          "Description",
+                          "Stock Quantity",
                           "Status",
                           "Date Added",
                           "Actions",
@@ -653,7 +705,7 @@ export default function Page() {
                     >
                       {filteredParcelItems.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="px-4 py-12 text-center">
+                          <td colSpan="8" className="px-4 py-12 text-center">
                             <div className="flex flex-col items-center justify-center gap-3">
                               <Package
                                 className={`w-12 h-12 ${
@@ -700,6 +752,13 @@ export default function Page() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm">
+                              {buildProductCode(item, "CMP")}
+                            </td>
+                            <td className="px-4 py-3 text-sm">{buildSku(item)}</td>
+                            <td className="px-4 py-3 text-sm">
+                              {buildDescription(item)}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
                               {item.quantity} units
                             </td>
                             <td className="px-4 py-3 text-sm">
@@ -740,7 +799,7 @@ export default function Page() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Box className="w-6 h-6 text-[#7c3aed]" />
-                <h2 className="text-xl font-bold">Product Inventory</h2>
+                <h2 className="text-xl font-bold">Product Inventory Status</h2>
               </div>
 
               {/* Product Status Summary Cards */}
@@ -883,13 +942,13 @@ export default function Page() {
               </div>
 
               {/* Product Filter Dropdown */}
-              <div className="mb-4">
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label
                   className={`block text-sm font-medium mb-2 ${
                     darkMode ? "text-gray-300" : "text-gray-700"
                   }`}
                 >
-                  Filter Products by Status:
+                  Filter Complete Set Less by Status:
                 </label>
                 <select
                   value={filterProductStatus}
@@ -916,6 +975,17 @@ export default function Page() {
                     Out of Stock ({productStatusCounts.out})
                   </option>
                 </select>
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search by product name, code, or SKU"
+                  className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm self-end ${
+                    darkMode
+                      ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
+                      : "border-[#D1D5DB] focus:ring-[#7c3aed] focus:border-[#7c3aed] bg-white text-black"
+                  }`}
+                />
               </div>
 
               {/* Product Items Table */}
@@ -943,7 +1013,10 @@ export default function Page() {
                       <tr>
                         {[
                           "Product Name",
-                          "Current Stock",
+                          "Product Code",
+                          "SKU",
+                          "Description",
+                          "Stock Quantity",
                           "Status",
                           "Date Added",
                           "Actions",
@@ -964,7 +1037,7 @@ export default function Page() {
                     >
                       {filteredProductItems.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="px-4 py-12 text-center">
+                          <td colSpan="8" className="px-4 py-12 text-center">
                             <div className="flex flex-col items-center justify-center gap-3">
                               <Box
                                 className={`w-12 h-12 ${
@@ -1009,6 +1082,13 @@ export default function Page() {
                                   {item.product_name}
                                 </span>
                               </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              {buildProductCode(item)}
+                            </td>
+                            <td className="px-4 py-3 text-sm">{buildSku(item)}</td>
+                            <td className="px-4 py-3 text-sm">
+                              {buildDescription(item)}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units

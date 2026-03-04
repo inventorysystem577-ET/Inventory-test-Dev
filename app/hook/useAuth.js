@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabaseClient";
 export const useAuth = () => {
   const [userEmail, setUserEmail] = useState(null);
   const [displayName, setDisplayName] = useState(null);
+  const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -19,13 +20,19 @@ export const useAuth = () => {
       if (!session) {
         setUserEmail(null);
         setDisplayName(null);
+        setRole(null);
         setLoading(false);
         router.replace("/");
         return;
       }
 
       setUserEmail(session.user?.email || null);
-      setDisplayName(session.user?.user_metadata?.display_name || null);
+      setDisplayName(
+        session.user?.user_metadata?.display_name ||
+          session.user?.user_metadata?.name ||
+          null,
+      );
+      setRole(session.user?.user_metadata?.role || "staff");
       setLoading(false);
     };
 
@@ -55,5 +62,5 @@ export const useAuth = () => {
     };
   }, [router]);
 
-  return { userEmail, displayName, loading };
+  return { userEmail, displayName, role, loading };
 };
