@@ -375,7 +375,7 @@ export default function Page() {
             <div className="flex flex-col items-center text-center mb-6 gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-                  Inventory Status
+                  Inventory List
                 </h1>
                 <p
                   className={`text-sm ${

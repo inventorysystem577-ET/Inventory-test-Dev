@@ -252,7 +252,7 @@ export default function page() {
                   Stock In
                 </h3>
                 <p className="text-3xl font-bold mb-2">{parcelShippedCount}</p>
-                <p className="text-xs opacity-75">Parcel items in stock</p>
+                <p className="text-xs opacity-75">Items in stock</p>
               </div>
 
               {/* Stock Out (Parcel) - Orange */}
@@ -269,7 +269,7 @@ export default function page() {
                   Stock Out
                 </h3>
                 <p className="text-3xl font-bold mb-2">{parcelDeliveryCount}</p>
-                <p className="text-xs opacity-75">Parcel deliveries</p>
+                <p className="text-xs opacity-75">Item deliveries</p>
               </div>
 
               {/* Product IN - Purple */}
@@ -679,7 +679,7 @@ export default function page() {
                         darkMode ? "text-gray-300" : "text-gray-700"
                       }`}
                     >
-                      Parcels:{" "}
+                      Items:{" "}
                       {statusCounts.out > 0 &&
                         `${statusCounts.out} out of stock`}
                       {statusCounts.out > 0 &&
@@ -945,7 +945,7 @@ export default function page() {
                     : "bg-white border-[#E5E7EB]"
                 }`}
               >
-                <h3 className="text-lg font-semibold mb-4">Recent Parcel IN</h3>
+                <h3 className="text-lg font-semibold mb-4">Recent Item IN</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full table-fixed">
                     <thead
@@ -995,7 +995,7 @@ export default function page() {
                 }`}
               >
                 <h3 className="text-lg font-semibold mb-4">
-                  Recent Parcel OUT
+                  Recent Item OUT
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full table-fixed">

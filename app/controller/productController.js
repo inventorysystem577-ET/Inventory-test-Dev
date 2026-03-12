@@ -8,6 +8,10 @@ import {
   reserveComponentsFromStock,
   deleteAllProductInItems,
   deleteAllProductOutItems,
+  updateProductIn,
+  deleteProductIn,
+  updateProductOut,
+  deleteProductOut,
 } from "../models/productModel";
 
 /* =====================================
@@ -148,4 +152,24 @@ export const fetchProductOutController = async () => {
 
 export const clearProductOutHistory = async () => {
   return await deleteAllProductOutItems();
+};
+
+/* =====================================
+     INDIVIDUAL CRUD CONTROLLERS
+=====================================*/
+
+export const updateProductInController = async (id, updates) => {
+  return await updateProductIn(id, updates);
+};
+
+export const deleteProductInController = async (id) => {
+  return await deleteProductIn(id);
+};
+
+export const updateProductOutController = async (id, updates) => {
+  return await updateProductOut(id, updates);
+};
+
+export const deleteProductOutController = async (id) => {
+  return await deleteProductOut(id);
 };

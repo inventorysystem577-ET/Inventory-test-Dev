@@ -536,3 +536,45 @@ export const deleteAllProductOutItems = async () => {
   if (error) return { success: false, error };
   return { success: true, deletedCount: Array.isArray(data) ? data.length : 0 };
 };
+
+/* ===============================
+     INDIVIDUAL CRUD OPERATIONS
+================================*/
+
+export const updateProductIn = async (id, updates) => {
+  const { data, error } = await supabase
+    .from("product_in")
+    .update(updates)
+    .eq("id", id)
+    .select();
+  if (error) return { error };
+  return { data };
+};
+
+export const deleteProductIn = async (id) => {
+  const { data, error } = await supabase
+    .from("product_in")
+    .delete()
+    .eq("id", id);
+  if (error) return { error };
+  return { data };
+};
+
+export const updateProductOut = async (id, updates) => {
+  const { data, error } = await supabase
+    .from("products_out")
+    .update(updates)
+    .eq("id", id)
+    .select();
+  if (error) return { error };
+  return { data };
+};
+
+export const deleteProductOut = async (id) => {
+  const { data, error } = await supabase
+    .from("products_out")
+    .delete()
+    .eq("id", id);
+  if (error) return { error };
+  return { data };
+};
