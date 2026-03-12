@@ -21,14 +21,17 @@ import "animate.css";
 // Import controllers
 import {
   fetchProductInController,
+  fetchProductOutController,
   clearProductInInventory,
   clearProductOutHistory,
 } from "../../controller/productController";
 import { deleteAllParcelInItems } from "../../controller/parcelShipped";
 import { clearParcelOutHistory } from "../../controller/parcelDelivery";
 import { fetchParcelItems } from "../../utils/parcelShippedHelper";
+import { fetchParcelOutItems } from "../../utils/parcelOutHelper";
 import { useAuth } from "../../hook/useAuth";
 import { isAdminRole } from "../../utils/roleHelper";
+import { saveAdminUndoAction } from "../../utils/adminUndo";
 import {
   buildDescription,
   buildProductCode,
@@ -315,6 +318,70 @@ export default function Page() {
 
     const parcelSnapshot = [...parcelItems];
     const productSnapshot = [...productItems];
+
+    const [parcelOutSnapshot, productOutSnapshot] = await Promise.all([
+      fetchParcelOutItems(),
+      fetchProductOutController(),
+    ]);
+
+    const undoAction = {
+      version: 1,
+      action: "inventory-delete-all",
+      createdAt: new Date().toISOString(),
+      data: {
+        parcelIn: parcelSnapshot.map((item) => ({
+          item_name: item.name,
+          date: item.date,
+          quantity: item.quantity,
+          time_in: item.timeIn,
+          shipping_mode: item.shipping_mode || null,
+          client_name: item.client_name || null,
+          price: item.price ?? null,
+        })),
+        productIn: productSnapshot.map((item) => ({
+          product_name: item.product_name,
+          quantity: item.quantity,
+          date: item.date,
+          time_in: item.time_in,
+          components: item.components,
+          shipping_mode: item.shipping_mode || null,
+          client_name: item.client_name || null,
+          description: item.description || null,
+          price: item.price ?? null,
+        })),
+        parcelOut: (parcelOutSnapshot || []).map((item) => ({
+          item_name: item.name,
+          date: item.date,
+          quantity: item.quantity,
+          time_out: item.timeOut,
+          shipping_mode: item.shipping_mode || null,
+          client_name: item.client_name || null,
+          price: item.price ?? null,
+        })),
+        productOut: (productOutSnapshot || []).map((item) => ({
+          product_name: item.product_name,
+          quantity: item.quantity,
+          date: item.date,
+          time_out: item.time_out,
+          components: item.components,
+          shipping_mode: item.shipping_mode || null,
+          client_name: item.client_name || null,
+          description: item.description || null,
+          price: item.price ?? null,
+        })),
+      },
+    };
+
+    const saveUndoResult = saveAdminUndoAction(undoAction);
+    if (!saveUndoResult.success) {
+      setExportError(
+        "Unable to create undo snapshot (storage full). Deletion canceled.",
+      );
+      setIsProcessingExport(false);
+      return;
+    }
+
+    window.dispatchEvent(new Event("adminUndoUpdated"));
     exportToPDF(parcelSnapshot, productSnapshot);
 
     const [parcelInResult, productInResult, parcelOutResult, productOutResult] =
@@ -756,7 +823,7 @@ export default function Page() {
                             </td>
                             <td className="px-4 py-3 text-sm">{buildSku(item)}</td>
                             <td className="px-4 py-3 text-sm">
-                              {buildDescription(item)}
+                              {buildDescription(item) || "-"}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units
@@ -1088,7 +1155,7 @@ export default function Page() {
                             </td>
                             <td className="px-4 py-3 text-sm">{buildSku(item)}</td>
                             <td className="px-4 py-3 text-sm">
-                              {buildDescription(item)}
+                              {buildDescription(item) || "-"}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units

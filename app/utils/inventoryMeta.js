@@ -19,7 +19,6 @@ export const buildSku = (row = {}) => {
 };
 
 export const buildDescription = (row = {}) => {
-  if (row.description) return row.description;
-  const name = row.product_name || row.name || "Item";
-  return `${name} inventory item`;
+  const value = (row.description || "").toString().trim();
+  return value;
 };

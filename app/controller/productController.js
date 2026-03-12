@@ -8,6 +8,9 @@ import {
   reserveComponentsFromStock,
   deleteAllProductInItems,
   deleteAllProductOutItems,
+  updateProductInDescription,
+  restoreProductInItems,
+  restoreProductOutItems,
 } from "../models/productModel";
 
 /* =====================================
@@ -90,6 +93,14 @@ export const clearProductInInventory = async () => {
   return await deleteAllProductInItems();
 };
 
+export const updateProductInDescriptionController = async (id, description) => {
+  return await updateProductInDescription(id, description);
+};
+
+export const restoreProductInInventory = async (rows) => {
+  return await restoreProductInItems(rows);
+};
+
 /* =====================================
         PRODUCT OUT CONTROLLER
 =====================================*/
@@ -148,4 +159,8 @@ export const fetchProductOutController = async () => {
 
 export const clearProductOutHistory = async () => {
   return await deleteAllProductOutItems();
+};
+
+export const restoreProductOutHistory = async (rows) => {
+  return await restoreProductOutItems(rows);
 };

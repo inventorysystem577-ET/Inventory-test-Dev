@@ -4,6 +4,7 @@ import {
   updateParcelOutItem as modelUpdateParcelOutItem,
   deleteParcelOutItem as modelDeleteParcelOutItem,
   deleteAllParcelOutItems as modelDeleteAllParcelOutItems,
+  restoreParcelOutItems as modelRestoreParcelOutItems,
 } from "../models/parcelDeliveryModel";
 
 export const addParcelOutItem = async (payload) => {
@@ -24,4 +25,8 @@ export const deleteParcelOutItem = async (id) => {
 
 export const clearParcelOutHistory = async () => {
   return await modelDeleteAllParcelOutItems();
+};
+
+export const restoreParcelOutHistory = async (rows) => {
+  return await modelRestoreParcelOutItems(rows);
 };

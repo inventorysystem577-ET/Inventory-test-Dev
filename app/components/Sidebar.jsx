@@ -1,17 +1,14 @@
 "use client";
 import {
-  BarChart3,
-  Package,
-  PackageOpen,
-  Activity,
   LogOut,
-  ArrowDownToLine,
-  ArrowUpFromLine,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { handleLogout } from "../controller/logoutController";
 import { useAuth } from "../hook/useAuth";
 import { isAdminRole } from "../utils/roleHelper";
+import { useEffect, useMemo, useState } from "react";
+import { getSidebarMenuItems, SIDEBAR_ICON_MAP } from "../utils/sidebarMenuConfig";
+import { loadSidebarCustomization } from "../utils/sidebarCustomization";
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
   const router = useRouter();
@@ -19,65 +16,46 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
   const { role } = useAuth();
   const isAdmin = isAdminRole(role);
 
-  const menuItems = isAdmin
-    ? [
-        {
-          id: "Dashboard",
-          label: "Dashboard",
-          icon: BarChart3,
-          path: "/view/dashboard",
-        },
-        {
-          id: "Product In",
-          label: "Product In",
-          icon: ArrowDownToLine,
-          path: "/view/product-in",
-        },
-        {
-          id: "Product Out",
-          label: "Product Out",
-          icon: ArrowUpFromLine,
-          path: "/view/product-out",
-        },
-        {
-          id: "Parcel Shipped",
-          label: "Components Stock In",
-          icon: Package,
-          path: "/view/parcel-shipped",
-        },
-        {
-          id: "Parcel Delivery",
-          label: "Components Stock Out",
-          icon: PackageOpen,
-          path: "/view/parcel-delivery",
-        },
-        {
-          id: "Inventory Stock",
-          label: "Inventory",
-          icon: Activity,
-          path: "/view/out-of-stock",
-        },
-      ]
-    : [
-        {
-          id: "Product In",
-          label: "Monitoring and Adding",
-          icon: ArrowDownToLine,
-          path: "/view/product-in",
-        },
-      ];
+  const [sidebarCustomization, setSidebarCustomization] = useState({});
 
-  const adminMenuItems = isAdmin
-    ? [
-        {
-          id: "Admin Control Panel",
-          label: "Admin Control Panel",
-          icon: Activity,
-          path: "/view/admin-panel",
-        },
-      ]
-    : [];
-  const allMenuItems = [...menuItems, ...adminMenuItems];
+  useEffect(() => {
+    setSidebarCustomization(loadSidebarCustomization());
+
+    const handleCustomizationUpdate = () => {
+      setSidebarCustomization(loadSidebarCustomization());
+    };
+
+    window.addEventListener("sidebarCustomizationUpdated", handleCustomizationUpdate);
+    window.addEventListener("storage", handleCustomizationUpdate);
+    return () => {
+      window.removeEventListener(
+        "sidebarCustomizationUpdated",
+        handleCustomizationUpdate,
+      );
+      window.removeEventListener("storage", handleCustomizationUpdate);
+    };
+  }, []);
+
+  const allMenuItems = useMemo(() => {
+    const base = getSidebarMenuItems(isAdmin);
+    const customization = sidebarCustomization || {};
+
+    return base.map((item) => {
+      const override = customization[item.id];
+      if (!override || typeof override !== "object") return item;
+
+      const nextLabel =
+        typeof override.label === "string" && override.label.trim()
+          ? override.label.trim()
+          : item.label;
+      const nextIconKey =
+        typeof override.iconKey === "string" && SIDEBAR_ICON_MAP[override.iconKey]
+          ? override.iconKey
+          : item.iconKey;
+
+      return { ...item, label: nextLabel, iconKey: nextIconKey };
+    });
+  }, [isAdmin, sidebarCustomization]);
 
   const handleMenuClick = (path) => {
     router.push(path);
@@ -140,7 +118,10 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
                     }`}
                   />
 
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {(() => {
+                    const Icon = SIDEBAR_ICON_MAP[item.iconKey] || SIDEBAR_ICON_MAP.Activity;
+                    return <Icon className="w-5 h-5 flex-shrink-0" />;
+                  })()}
                   <span className="whitespace-nowrap">{item.label}</span>
                 </button>
               );

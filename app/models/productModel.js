@@ -352,6 +352,53 @@ export const deleteAllProductInItems = async () => {
   return { success: true, deletedCount: Array.isArray(data) ? data.length : 0 };
 };
 
+export const updateProductInDescription = async (id, description) => {
+  const cleaned = (description ?? "").toString().trim();
+  const payload = { description: cleaned ? cleaned : null };
+
+  const { data, error } = await supabase
+    .from("product_in")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error, message: formatSupabaseError(error, "Failed to update description.") };
+  }
+
+  return { success: true, data };
+};
+
+export const restoreProductInItems = async (rows = []) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { success: true, insertedCount: 0 };
+  }
+
+  const payload = rows.map((row) => ({
+    product_name: row.product_name,
+    quantity: Number(row.quantity ?? 0),
+    date: row.date,
+    time_in: row.time_in,
+    components: Array.isArray(row.components) ? row.components : [],
+    shipping_mode: row.shipping_mode || null,
+    client_name: row.client_name || null,
+    description: (row.description || "").toString().trim() || null,
+    price:
+      row.price === "" || row.price === null || row.price === undefined
+        ? null
+        : Number(row.price),
+  }));
+
+  const { data, error } = await supabase
+    .from("product_in")
+    .insert(payload)
+    .select("id");
+
+  if (error) return { success: false, error };
+  return { success: true, insertedCount: Array.isArray(data) ? data.length : 0 };
+};
+
 // Get specific product by name
 export const getProductInByName = async (product_name) => {
   const { data, error } = await supabase
@@ -535,4 +582,33 @@ export const deleteAllProductOutItems = async () => {
 
   if (error) return { success: false, error };
   return { success: true, deletedCount: Array.isArray(data) ? data.length : 0 };
+};
+
+export const restoreProductOutItems = async (rows = []) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { success: true, insertedCount: 0 };
+  }
+
+  const payload = rows.map((row) => ({
+    product_name: row.product_name,
+    quantity: Number(row.quantity ?? 0),
+    date: row.date,
+    time_out: row.time_out,
+    components: Array.isArray(row.components) ? row.components : [],
+    shipping_mode: row.shipping_mode || null,
+    client_name: row.client_name || null,
+    description: (row.description || "").toString().trim() || null,
+    price:
+      row.price === "" || row.price === null || row.price === undefined
+        ? null
+        : Number(row.price),
+  }));
+
+  const { data, error } = await supabase
+    .from("products_out")
+    .insert(payload)
+    .select("id");
+
+  if (error) return { success: false, error };
+  return { success: true, insertedCount: Array.isArray(data) ? data.length : 0 };
 };

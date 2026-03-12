@@ -14,12 +14,16 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  PencilLine,
+  Check,
+  X,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "animate.css";
 import {
   fetchProductInController,
   handleAddProductIn,
+  updateProductInDescriptionController,
 } from "../../controller/productController";
 import { products } from "../../utils/productsData";
 import AuthGuard from "../../components/AuthGuard";
@@ -31,7 +35,6 @@ import {
 import { useAuth } from "../../hook/useAuth";
 import { isAdminRole } from "../../utils/roleHelper";
 import {
-  buildDescription,
   buildProductCode,
   buildSku,
 } from "../../utils/inventoryMeta";
@@ -101,6 +104,12 @@ export default function ProductInPage() {
     { name: "", quantity: "" },
   ]);
   const [customComponentsError, setCustomComponentsError] = useState("");
+  const [expandedDescriptionIds, setExpandedDescriptionIds] = useState(
+    () => new Set(),
+  );
+  const [editingDescriptionId, setEditingDescriptionId] = useState(null);
+  const [editingDescriptionValue, setEditingDescriptionValue] = useState("");
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
@@ -196,6 +205,69 @@ export default function ProductInPage() {
     const predefinedNames = products.map((product) => product.name).filter(Boolean);
     const unique = Array.from(new Set([...predefinedNames, ...existingNames])).sort();
     setProductSuggestions(unique);
+  };
+
+  const DESCRIPTION_TRUNCATE_LIMIT = 120;
+  const truncateText = (value, maxLength) => {
+    const text = (value || "").toString().trim();
+    if (!text) return { text: "", isTruncated: false };
+    if (text.length <= maxLength) return { text, isTruncated: false };
+    return { text: `${text.slice(0, maxLength).trimEnd()}...`, isTruncated: true };
+  };
+
+  const toggleDescriptionExpanded = (id) => {
+    setExpandedDescriptionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const startEditingDescription = (item) => {
+    setEditingDescriptionId(item.id);
+    setEditingDescriptionValue((item.description || "").toString());
+  };
+
+  const cancelEditingDescription = () => {
+    setEditingDescriptionId(null);
+    setEditingDescriptionValue("");
+  };
+
+  const saveEditingDescription = async (id) => {
+    if (!id) return;
+    setIsSavingDescription(true);
+    setErrorBar("");
+    setSuccessBar("");
+
+    try {
+      const result = await updateProductInDescriptionController(
+        id,
+        editingDescriptionValue,
+      );
+
+      if (!result?.success) {
+        setErrorBar(result?.message || "Failed to update description.");
+        return;
+      }
+
+      const updated = result?.data || null;
+      setItems((prev) =>
+        (prev || []).map((row) =>
+          row.id === id
+            ? {
+                ...row,
+                description: updated?.description ?? editingDescriptionValue,
+              }
+            : row,
+        ),
+      );
+
+      setSuccessBar("Description updated.");
+      cancelEditingDescription();
+    } finally {
+      setIsSavingDescription(false);
+    }
   };
 
   const loadStockInItems = async () => {
@@ -935,7 +1007,11 @@ export default function ProductInPage() {
                       ].map((head) => (
                         <th
                           key={head}
-                          className="p-3 sm:p-4 text-center text-xs sm:text-sm font-semibold whitespace-nowrap"
+                          className={`p-3 sm:p-4 text-xs sm:text-sm font-semibold whitespace-nowrap ${
+                            head === "DESCRIPTION"
+                              ? "text-left min-w-[22rem] w-[28rem]"
+                              : "text-center"
+                          }`}
                         >
                           {head}
                         </th>
@@ -988,8 +1064,135 @@ export default function ProductInPage() {
                           <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm whitespace-nowrap">
                             {buildSku(item)}
                           </td>
-                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm">
-                            {buildDescription(item)}
+                          <td className="p-3 sm:p-4 align-middle text-xs sm:text-sm min-w-[22rem] w-[28rem]">
+                            {editingDescriptionId === item.id ? (
+                              <div className="flex flex-col gap-2">
+                                <textarea
+                                  value={editingDescriptionValue}
+                                  onChange={(e) =>
+                                    setEditingDescriptionValue(e.target.value)
+                                  }
+                                  rows={3}
+                                  className={`w-full rounded-lg p-2 text-xs sm:text-sm border ${
+                                    darkMode
+                                      ? "bg-[#111827] border-[#374151] text-white"
+                                      : "bg-white border-[#E5E7EB] text-black"
+                                  }`}
+                                  placeholder="Type a description..."
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={isSavingDescription}
+                                    onClick={() => saveEditingDescription(item.id)}
+                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold ${
+                                      isSavingDescription
+                                        ? darkMode
+                                          ? "bg-[#374151] text-[#9CA3AF] cursor-not-allowed"
+                                          : "bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed"
+                                        : "bg-[#16A34A] text-white hover:bg-[#15803D]"
+                                    }`}
+                                  >
+                                    <Check className="w-4 h-4" /> Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isSavingDescription}
+                                    onClick={cancelEditingDescription}
+                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold ${
+                                      darkMode
+                                        ? "bg-[#374151] text-[#D1D5DB] hover:bg-[#4B5563]"
+                                        : "bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]"
+                                    }`}
+                                  >
+                                    <X className="w-4 h-4" /> Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start gap-2">
+                                <button
+                                  type="button"
+                                  className={`flex-1 text-left leading-snug ${
+                                    (item.description || "").toString().trim()
+                                      ? "cursor-pointer"
+                                      : "cursor-default"
+                                  }`}
+                                  onClick={() => {
+                                    const text = (item.description || "")
+                                      .toString()
+                                      .trim();
+                                    if (!text) return;
+                                    toggleDescriptionExpanded(item.id);
+                                  }}
+                                  title={
+                                    expandedDescriptionIds.has(item.id)
+                                      ? "Click to collapse"
+                                      : "Click to expand"
+                                  }
+                                >
+                                  {(() => {
+                                    const raw = (item.description || "")
+                                      .toString()
+                                      .trim();
+                                    if (!raw) {
+                                      return (
+                                        <span
+                                          className={
+                                            darkMode
+                                              ? "text-gray-500"
+                                              : "text-gray-400"
+                                          }
+                                        >
+                                          No description
+                                        </span>
+                                      );
+                                    }
+
+                                    if (expandedDescriptionIds.has(item.id)) {
+                                      return (
+                                        <span className="whitespace-pre-wrap">
+                                          {raw}
+                                        </span>
+                                      );
+                                    }
+
+                                    const truncated = truncateText(
+                                      raw,
+                                      DESCRIPTION_TRUNCATE_LIMIT,
+                                    );
+                                    return (
+                                      <span>
+                                        {truncated.text}
+                                        {truncated.isTruncated ? (
+                                          <span
+                                            className={`ml-2 text-[11px] font-semibold ${
+                                              darkMode
+                                                ? "text-blue-300"
+                                                : "text-blue-600"
+                                            }`}
+                                          >
+                                            View more
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    );
+                                  })()}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditingDescription(item)}
+                                  className={`p-2 rounded-lg border transition ${
+                                    darkMode
+                                      ? "border-[#374151] hover:bg-[#374151]/60"
+                                      : "border-[#E5E7EB] hover:bg-[#F3F4F6]"
+                                  }`}
+                                  title="Edit description"
+                                >
+                                  <PencilLine className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 sm:p-4 text-center align-middle">
                             <span

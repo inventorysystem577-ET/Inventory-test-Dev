@@ -41,9 +41,29 @@ export default function ProductOutPage() {
     new Date().toISOString().slice(0, 7),
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedDescriptionIds, setExpandedDescriptionIds] = useState(
+    () => new Set(),
+  );
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+
+  const DESCRIPTION_TRUNCATE_LIMIT = 120;
+  const truncateText = (value, maxLength) => {
+    const text = (value || "").toString().trim();
+    if (!text) return { text: "", isTruncated: false };
+    if (text.length <= maxLength) return { text, isTruncated: false };
+    return { text: `${text.slice(0, maxLength).trimEnd()}...`, isTruncated: true };
+  };
+
+  const toggleDescriptionExpanded = (id) => {
+    setExpandedDescriptionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     const price = parseFloat(unitPrice) || 0;
@@ -706,7 +726,11 @@ export default function ProductOutPage() {
                     ].map((head) => (
                       <th
                         key={head}
-                        className="p-3 text-center text-xs font-semibold uppercase tracking-wider"
+                        className={`p-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${
+                          head === "Description"
+                            ? "text-left min-w-[22rem] w-[28rem]"
+                            : "text-center"
+                        }`}
                       >
                         {head}
                       </th>
@@ -771,7 +795,56 @@ export default function ProductOutPage() {
                         </td>
                         <td className="p-3 text-center align-middle">{item.shipping_mode || "-"}</td>
                         <td className="p-3 text-center align-middle">{item.client_name || "-"}</td>
-                        <td className="p-3 text-center align-middle">{item.description || "-"}</td>
+                        <td className="p-3 align-middle text-left min-w-[22rem] w-[28rem]">
+                          {(() => {
+                            const raw = (item.description || "").toString().trim();
+                            if (!raw) {
+                              return (
+                                <span className={darkMode ? "text-gray-500" : "text-gray-400"}>
+                                  -
+                                </span>
+                              );
+                            }
+
+                            const isExpanded = expandedDescriptionIds.has(item.id);
+                            const truncated = truncateText(raw, DESCRIPTION_TRUNCATE_LIMIT);
+                            const canToggle = isExpanded || truncated.isTruncated;
+
+                            return (
+                              <button
+                                type="button"
+                                className={`w-full text-left leading-snug ${canToggle ? "cursor-pointer" : "cursor-default"}`}
+                                onClick={() => {
+                                  if (!canToggle) return;
+                                  toggleDescriptionExpanded(item.id);
+                                }}
+                                title={isExpanded ? "Click to collapse" : "Click to expand"}
+                              >
+                                <span className="whitespace-pre-wrap">
+                                  {isExpanded ? raw : truncated.text}
+                                </span>
+                                {!isExpanded && truncated.isTruncated ? (
+                                  <span
+                                    className={`ml-2 text-[11px] font-semibold ${
+                                      darkMode ? "text-blue-300" : "text-blue-600"
+                                    }`}
+                                  >
+                                    View more
+                                  </span>
+                                ) : null}
+                                {isExpanded && truncated.isTruncated ? (
+                                  <span
+                                    className={`ml-2 text-[11px] font-semibold ${
+                                      darkMode ? "text-blue-300" : "text-blue-600"
+                                    }`}
+                                  >
+                                    View less
+                                  </span>
+                                ) : null}
+                              </button>
+                            );
+                          })()}
+                        </td>
                         <td className="p-3 text-center align-middle">
                           {item.price !== null && item.price !== undefined
                             ? Number(item.price).toFixed(2)

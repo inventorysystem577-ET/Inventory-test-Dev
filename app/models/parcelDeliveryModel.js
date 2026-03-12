@@ -109,3 +109,30 @@ export const deleteAllParcelOutItems = async () => {
   if (error) return { success: false, error };
   return { success: true, deletedCount: Array.isArray(data) ? data.length : 0 };
 };
+
+export const restoreParcelOutItems = async (rows = []) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { success: true, insertedCount: 0 };
+  }
+
+  const payload = rows.map((row) => ({
+    item_name: row.item_name,
+    date: row.date,
+    quantity: Number(row.quantity ?? 0),
+    time_out: row.time_out,
+    shipping_mode: row.shipping_mode || null,
+    client_name: row.client_name || null,
+    price:
+      row.price === "" || row.price === null || row.price === undefined
+        ? null
+        : Number(row.price),
+  }));
+
+  const { data, error } = await supabase
+    .from("parcel_out")
+    .insert(payload)
+    .select("id");
+
+  if (error) return { success: false, error };
+  return { success: true, insertedCount: Array.isArray(data) ? data.length : 0 };
+};
