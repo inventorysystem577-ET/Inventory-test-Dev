@@ -28,27 +28,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
           path: "/view/dashboard",
         },
         {
-          id: "Product In",
-          label: "Product In",
+          id: "Stock In",
+          label: "Stock In",
           icon: ArrowDownToLine,
-          path: "/view/product-in",
-        },
-        {
-          id: "Product Out",
-          label: "Product Out",
-          icon: ArrowUpFromLine,
-          path: "/view/product-out",
-        },
-        {
-          id: "Parcel Shipped",
-          label: "Components Stock In",
-          icon: Package,
           path: "/view/parcel-shipped",
         },
         {
-          id: "Parcel Delivery",
-          label: "Components Stock Out",
-          icon: PackageOpen,
+          id: "Stock Out",
+          label: "Stock Out",
+          icon: ArrowUpFromLine,
           path: "/view/parcel-delivery",
         },
         {

@@ -34,6 +34,7 @@ import {
   buildProductCode,
   buildSku,
 } from "../../utils/inventoryMeta";
+import { CATEGORIES, CATEGORY_OPTIONS, getCategoryColor, getCategoryIcon } from "../../utils/categoryUtils";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -62,6 +63,8 @@ export default function Page() {
   const [exportError, setExportError] = useState("");
   const [parcelSearch, setParcelSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [parcelCategoryFilter, setParcelCategoryFilter] = useState("all");
+  const [productCategoryFilter, setProductCategoryFilter] = useState("all");
   const { role } = useAuth();
   const isAdmin = isAdminRole(role);
 
@@ -177,30 +180,36 @@ export default function Page() {
     };
   }, [focusParam, typeParam, parcelItems.length, productItems.length]);
 
-  // Filter parcel items based on selected status
+  // Filter parcel items based on selected status and category
   const filteredParcelItems = parcelItems.filter((item) => {
     const statusMatch =
       filterParcelStatus === "all" ||
       getStockStatus(item.quantity) === filterParcelStatus;
+    const categoryMatch =
+      parcelCategoryFilter === "all" ||
+      (item.category || "").toLowerCase() === parcelCategoryFilter.toLowerCase();
     const keyword = parcelSearch.trim().toLowerCase();
-    if (!keyword) return statusMatch;
+    if (!keyword) return statusMatch && categoryMatch;
     const code = buildProductCode(item, "CMP").toLowerCase();
     const sku = buildSku(item).toLowerCase();
     const name = (item.name || "").toLowerCase();
-    return statusMatch && (name.includes(keyword) || code.includes(keyword) || sku.includes(keyword));
+    return statusMatch && categoryMatch && (name.includes(keyword) || code.includes(keyword) || sku.includes(keyword));
   });
 
-  // Filter product items based on selected status
+  // Filter product items based on selected status and category
   const filteredProductItems = productItems.filter((item) => {
     const statusMatch =
       filterProductStatus === "all" ||
       getStockStatus(item.quantity) === filterProductStatus;
+    const categoryMatch =
+      productCategoryFilter === "all" ||
+      (item.category || "").toLowerCase() === productCategoryFilter.toLowerCase();
     const keyword = productSearch.trim().toLowerCase();
-    if (!keyword) return statusMatch;
+    if (!keyword) return statusMatch && categoryMatch;
     const code = buildProductCode(item).toLowerCase();
     const sku = buildSku(item).toLowerCase();
     const name = (item.product_name || "").toLowerCase();
-    return statusMatch && (name.includes(keyword) || code.includes(keyword) || sku.includes(keyword));
+    return statusMatch && categoryMatch && (name.includes(keyword) || code.includes(keyword) || sku.includes(keyword));
   });
 
   // Count parcel items by status
@@ -610,50 +619,86 @@ export default function Page() {
               </div>
 
               {/* Parcel Filter Dropdown */}
-              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label
-                  className={`block text-sm font-medium mb-2 ${
-                    darkMode ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  Filter Component Less by Status:
-                </label>
-                <select
-                  value={filterParcelStatus}
-                  onChange={(e) => setFilterParcelStatus(e.target.value)}
-                  className={`border rounded-lg px-3 py-2 w-full sm:w-60 focus:outline-none focus:ring-2 transition-all text-sm ${
-                    darkMode
-                      ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
-                      : "border-[#D1D5DB] focus:ring-[#1e40af] focus:border-[#1e40af] bg-white text-black"
-                  }`}
-                >
-                  <option value="all">
-                    All Parcels ({parcelItems.length})
-                  </option>
-                  <option value="available">
-                    Available ({parcelStatusCounts.available})
-                  </option>
-                  <option value="low">
-                    Low Stock ({parcelStatusCounts.low})
-                  </option>
-                  <option value="critical">
-                    Critical Level ({parcelStatusCounts.critical})
-                  </option>
-                  <option value="out">
-                    Out of Stock ({parcelStatusCounts.out})
-                  </option>
-                </select>
-                <input
-                  type="text"
-                  value={parcelSearch}
-                  onChange={(e) => setParcelSearch(e.target.value)}
-                  placeholder="Search by component name, code, or SKU"
-                  className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm self-end ${
-                    darkMode
-                      ? "border-[#374151] focus:ring-[#60A5FA] focus:border-[#60A5FA] bg-[#111827] text-white"
-                      : "border-[#D1D5DB] focus:ring-[#1e40af] focus:border-[#1e40af] bg-white text-black"
-                  }`}
-                />
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Filter by Status:
+                  </label>
+                  <select
+                    value={filterParcelStatus}
+                    onChange={(e) => setFilterParcelStatus(e.target.value)}
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#1e40af] focus:border-[#1e40af] bg-white text-black"
+                    }`}
+                  >
+                    <option value="all">
+                      All Status ({parcelItems.length})
+                    </option>
+                    <option value="available">
+                      Available ({parcelStatusCounts.available})
+                    </option>
+                    <option value="low">
+                      Low Stock ({parcelStatusCounts.low})
+                    </option>
+                    <option value="critical">
+                      Critical Level ({parcelStatusCounts.critical})
+                    </option>
+                    <option value="out">
+                      Out of Stock ({parcelStatusCounts.out})
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Filter by Category:
+                  </label>
+                  <select
+                    value={parcelCategoryFilter}
+                    onChange={(e) => setParcelCategoryFilter(e.target.value)}
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#1e40af] focus:border-[#1e40af] bg-white text-black"
+                    }`}
+                  >
+                    <option value="all">All Categories</option>
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Search:
+                  </label>
+                  <input
+                    type="text"
+                    value={parcelSearch}
+                    onChange={(e) => setParcelSearch(e.target.value)}
+                    placeholder="Search by name, code, or SKU"
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#60A5FA] focus:border-[#60A5FA] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#1e40af] focus:border-[#1e40af] bg-white text-black"
+                    }`}
+                  />
+                </div>
               </div>
 
               {/* Parcel Items Table */}
@@ -684,6 +729,7 @@ export default function Page() {
                           "Product Code",
                           "SKU",
                           "Description",
+                          "Category",
                           "Stock Quantity",
                           "Status",
                           "Date Added",
@@ -705,7 +751,7 @@ export default function Page() {
                     >
                       {filteredParcelItems.length === 0 ? (
                         <tr>
-                          <td colSpan="8" className="px-4 py-12 text-center">
+                          <td colSpan="9" className="px-4 py-12 text-center">
                             <div className="flex flex-col items-center justify-center gap-3">
                               <Package
                                 className={`w-12 h-12 ${
@@ -757,6 +803,14 @@ export default function Page() {
                             <td className="px-4 py-3 text-sm">{buildSku(item)}</td>
                             <td className="px-4 py-3 text-sm">
                               {buildDescription(item)}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                              >
+                                <span>{getCategoryIcon(item.category)}</span>
+                                {item.category || 'Uncategorized'}
+                              </span>
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units
@@ -942,50 +996,86 @@ export default function Page() {
               </div>
 
               {/* Product Filter Dropdown */}
-              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label
-                  className={`block text-sm font-medium mb-2 ${
-                    darkMode ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  Filter Complete Set Less by Status:
-                </label>
-                <select
-                  value={filterProductStatus}
-                  onChange={(e) => setFilterProductStatus(e.target.value)}
-                  className={`border rounded-lg px-3 py-2 w-full sm:w-60 focus:outline-none focus:ring-2 transition-all text-sm ${
-                    darkMode
-                      ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
-                      : "border-[#D1D5DB] focus:ring-[#7c3aed] focus:border-[#7c3aed] bg-white text-black"
-                  }`}
-                >
-                  <option value="all">
-                    All Products ({productItems.length})
-                  </option>
-                  <option value="available">
-                    Available ({productStatusCounts.available})
-                  </option>
-                  <option value="low">
-                    Low Stock ({productStatusCounts.low})
-                  </option>
-                  <option value="critical">
-                    Critical Level ({productStatusCounts.critical})
-                  </option>
-                  <option value="out">
-                    Out of Stock ({productStatusCounts.out})
-                  </option>
-                </select>
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Search by product name, code, or SKU"
-                  className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm self-end ${
-                    darkMode
-                      ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
-                      : "border-[#D1D5DB] focus:ring-[#7c3aed] focus:border-[#7c3aed] bg-white text-black"
-                  }`}
-                />
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Filter by Status:
+                  </label>
+                  <select
+                    value={filterProductStatus}
+                    onChange={(e) => setFilterProductStatus(e.target.value)}
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#7c3aed] focus:border-[#7c3aed] bg-white text-black"
+                    }`}
+                  >
+                    <option value="all">
+                      All Status ({productItems.length})
+                    </option>
+                    <option value="available">
+                      Available ({productStatusCounts.available})
+                    </option>
+                    <option value="low">
+                      Low Stock ({productStatusCounts.low})
+                    </option>
+                    <option value="critical">
+                      Critical Level ({productStatusCounts.critical})
+                    </option>
+                    <option value="out">
+                      Out of Stock ({productStatusCounts.out})
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Filter by Category:
+                  </label>
+                  <select
+                    value={productCategoryFilter}
+                    onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#7c3aed] focus:border-[#7c3aed] bg-white text-black"
+                    }`}
+                  >
+                    <option value="all">All Categories</option>
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${
+                      darkMode ? "text-gray-300" : "text-gray-700"
+                    }`}
+                  >
+                    Search:
+                  </label>
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Search by name, code, or SKU"
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all text-sm ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#a78bfa] focus:border-[#a78bfa] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#7c3aed] focus:border-[#7c3aed] bg-white text-black"
+                    }`}
+                  />
+                </div>
               </div>
 
               {/* Product Items Table */}
@@ -1016,6 +1106,7 @@ export default function Page() {
                           "Product Code",
                           "SKU",
                           "Description",
+                          "Category",
                           "Stock Quantity",
                           "Status",
                           "Date Added",
@@ -1037,7 +1128,7 @@ export default function Page() {
                     >
                       {filteredProductItems.length === 0 ? (
                         <tr>
-                          <td colSpan="8" className="px-4 py-12 text-center">
+                          <td colSpan="9" className="px-4 py-12 text-center">
                             <div className="flex flex-col items-center justify-center gap-3">
                               <Box
                                 className={`w-12 h-12 ${
@@ -1089,6 +1180,14 @@ export default function Page() {
                             <td className="px-4 py-3 text-sm">{buildSku(item)}</td>
                             <td className="px-4 py-3 text-sm">
                               {buildDescription(item)}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                              >
+                                <span>{getCategoryIcon(item.category)}</span>
+                                {item.category || 'Uncategorized'}
+                              </span>
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units

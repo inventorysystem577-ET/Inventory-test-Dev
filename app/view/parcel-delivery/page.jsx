@@ -29,7 +29,7 @@ export default function Page() {
   const [shippingMode, setShippingMode] = useState("");
   const [clientName, setClientName] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState(CATEGORIES.OTHERS);
+  const [category, setCategory] = useState(CATEGORIES.ELECTRONICS);
   const [selectedFilter, setSelectedFilter] = useState("");
   const computedTotalPrice = (Number(price) || 0) * (Number(quantity) || 0);
 
