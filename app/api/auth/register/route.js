@@ -1,31 +1,50 @@
-import { createAccessRequest } from "../../../models/authModel";
+import { supabase } from "../../../../lib/supabaseClient";
 
 export async function POST(req) {
   try {
-    const { name, email, role, reason } = await req.json();
+    const { name, email, password, role, reason } = await req.json();
 
-    // Generate a random password for the user
-    const generateRandomPassword = () => {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-      let password = "";
-      for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return password;
-    };
+    // Step 1: Create the auth.users account to get the real UUID
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, role },
+      },
+    });
 
-    const password = generateRandomPassword();
+    if (authError) throw new Error(authError.message);
 
-    const data = await createAccessRequest({ name, email, password, role, reason });
+    const authUserId = authData.user?.id;
+    if (!authUserId) throw new Error("Auth account creation failed — no user ID returned.");
+
+    // Step 2: Insert into access_requests_temp using the real auth UUID
+    const { error: insertError } = await supabase
+      .from("access_requests_temp")
+      .insert({
+        id: authUserId,
+        name,
+        email,
+        role: role || "staff",
+        reason: reason || "",
+        is_approved: false,
+      });
+
+    if (insertError) {
+      throw new Error(`Account created but registration request failed: ${insertError.message}`);
+    }
 
     return new Response(
-      JSON.stringify({ 
-        message: "Access request submitted successfully! Your request will be reviewed by an admin.",
-        user: data 
+      JSON.stringify({
+        message: "Registration submitted. Your account is pending admin approval.",
+        user: authData.user,
       }),
       { status: 201 },
     );
   } catch (error) {
-    return new Response(error.message || "Server error", { status: 400 });
+    return new Response(
+      JSON.stringify({ message: error.message || "Server error" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
   }
 }

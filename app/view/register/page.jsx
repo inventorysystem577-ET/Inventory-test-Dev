@@ -15,18 +15,37 @@ import { handleSubmitRegister } from "../../controller/registerController";
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
   const [reason, setReason] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const onSubmit = (e) => {
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    if (password.length < 8 || !hasUpper || !hasLower || !hasDigit) {
+      alert("Password must contain at least 8 characters, including uppercase, lowercase, and numbers.");
+      return;
+    }
+
+    if (!reason.trim()) {
+      alert("Please provide your reason for requesting access.");
+      return;
+    }
+
     handleFormSubmit({
       e,
       controllerFn: handleSubmitRegister,
-      data: { name, email, role, reason },
+      data: { name, email, password, role: "staff", reason: reason.trim() },
       setLoading,
       onSuccess: (response) => {
-        alert(response.message || "Access request submitted successfully! Your request will be reviewed by an admin.");
+        alert(response.message || "Registration submitted. Please wait for admin approval.");
         window.location.href = "/";
       },
       onError: (error) => alert(error.message),
@@ -66,10 +85,12 @@ export default function RegisterPage() {
               setName={setName}
               email={email}
               setEmail={setEmail}
-              role={role}
-              setRole={setRole}
               reason={reason}
               setReason={setReason}
+              password={password}
+              setPassword={setPassword}
+              confirmPassword={confirmPassword}
+              setConfirmPassword={setConfirmPassword}
               onSubmit={onSubmit}
               loading={loading}
             />

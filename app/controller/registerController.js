@@ -7,7 +7,8 @@ export const handleSubmitRegister = async (formData) => {
     const response = await axios.post("/api/auth/register", {
       name: formData.name,
       email: formData.email,
-      role: formData.role,
+      password: formData.password,
+      role: "staff",
       reason: formData.reason,
     });
 
