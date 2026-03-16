@@ -13,6 +13,9 @@ import {
   Users,
   Bell,
   RefreshCw,
+  RotateCcw,
+  Save,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "../../hook/useAuth";
 import { isAdminRole } from "../../utils/roleHelper";
@@ -468,8 +471,8 @@ export default function AdminPanelPage() {
                   </div>
                 ) : (
                   <div className="text-xs opacity-80">
-                    No undo snapshot found. Create one by running “Delete
-                    Inventory + Save PDF” in Inventory Status.
+                    No undo snapshot found. Create one by running "Delete
+                    Inventory + Save PDF" in Inventory Status.
                   </div>
                 )}
               </div>
