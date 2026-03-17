@@ -11,6 +11,10 @@ import {
   updateProductInDescription,
   restoreProductInItems,
   restoreProductOutItems,
+  updateProductIn,
+  deleteProductIn,
+  updateProductOut,
+  deleteProductOut,
 } from "../models/productModel";
 
 /* =====================================
@@ -237,4 +241,24 @@ export const clearProductOutHistory = async () => {
 
 export const restoreProductOutHistory = async (rows) => {
   return await restoreProductOutItems(rows);
+};
+
+/* =====================================
+     INDIVIDUAL CRUD CONTROLLERS
+=====================================*/
+
+export const updateProductInController = async (id, updates) => {
+  return await updateProductIn(id, updates);
+};
+
+export const deleteProductInController = async (id) => {
+  return await deleteProductIn(id);
+};
+
+export const updateProductOutController = async (id, updates) => {
+  return await updateProductOut(id, updates);
+};
+
+export const deleteProductOutController = async (id) => {
+  return await deleteProductOut(id);
 };

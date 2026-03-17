@@ -83,6 +83,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
           icon: UserCheck,
           path: "/view/user-approvals",
         },
+        {
+          id: "Admin CRUD Products",
+          label: "Admin CRUD Products",
+          icon: Activity,
+          path: "/view/admin-Crud-Products",
+        },
       ]
     : [];
 

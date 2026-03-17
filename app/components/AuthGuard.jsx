@@ -14,7 +14,11 @@ const STAFF_ALLOWED_PATHS = [
 ];
 
 // Admin-only pages
-const ADMIN_ONLY_PATHS = ["/view/admin-panel", "/view/user-approvals"];
+const ADMIN_ONLY_PATHS = [
+  "/view/admin-panel",
+  "/view/user-approvals",
+  "/view/admin-Crud-Products",
+];
 
 /* ================= AUTH GUARD ================= */
 export default function AuthGuard({ children, darkMode = false }) {
