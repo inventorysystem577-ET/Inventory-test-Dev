@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import TopNavbar from "../../components/TopNavbar";
 import AuthGuard from "../../components/AuthGuard";
+import { useAuth } from "../../hook/useAuth";
+import { isAdminRole } from "../../utils/roleHelper";
 import {
   PackageCheck,
   PackageOpen,
@@ -63,6 +65,8 @@ export default function page() {
   const [inventorySearch, setInventorySearch] = useState("");
 
   const router = useRouter();
+  const { role } = useAuth();
+  const isAdmin = isAdminRole(role);
 
   const convertTo12Hour = (time24) => {
     if (!time24) return "";
@@ -221,7 +225,11 @@ export default function page() {
         >
           <div className="p-4 sm:p-6 lg:p-8">
             {/* Summary Cards - Stock In / Stock Out */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
+            <div
+              className={`grid gap-4 sm:gap-6 mb-8 ${
+                isAdmin ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2" : "grid-cols-1"
+              }`}
+            >
               <div
                 onClick={() => handleCardClick("/view/parcel-shipped")}
                 className="bg-gradient-to-br from-[#1e40af] to-[#1e3a8a] text-white p-6 rounded-xl shadow-lg animate__animated animate__fadeInUp cursor-pointer transform transition-all duration-200 hover:scale-105 hover:shadow-2xl active:scale-95"
@@ -237,21 +245,23 @@ export default function page() {
                 <p className="text-xs opacity-75">Items in stock</p>
               </div>
 
-              <div
-                onClick={() => handleCardClick("/view/parcel-delivery")}
-                className="bg-gradient-to-br from-[#ea580c] to-[#c2410c] text-white p-6 rounded-xl shadow-lg animate__animated animate__fadeInUp cursor-pointer transform transition-all duration-200 hover:scale-105 hover:shadow-2xl active:scale-95"
-                style={{ animationDelay: "0.1s" }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <PackageOpen className="w-10 h-10" />
-                  <TrendingDown className="w-5 h-5 opacity-70" />
+              {isAdmin && (
+                <div
+                  onClick={() => handleCardClick("/view/parcel-delivery")}
+                  className="bg-gradient-to-br from-[#ea580c] to-[#c2410c] text-white p-6 rounded-xl shadow-lg animate__animated animate__fadeInUp cursor-pointer transform transition-all duration-200 hover:scale-105 hover:shadow-2xl active:scale-95"
+                  style={{ animationDelay: "0.1s" }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <PackageOpen className="w-10 h-10" />
+                    <TrendingDown className="w-5 h-5 opacity-70" />
+                  </div>
+                  <h3 className="text-sm font-medium opacity-90 mb-1">
+                    Stock Out
+                  </h3>
+                  <p className="text-3xl font-bold mb-2">{parcelDeliveryCount}</p>
+                  <p className="text-xs opacity-75">Items delivered</p>
                 </div>
-                <h3 className="text-sm font-medium opacity-90 mb-1">
-                  Stock Out
-                </h3>
-                <p className="text-3xl font-bold mb-2">{parcelDeliveryCount}</p>
-                <p className="text-xs opacity-75">Items delivered</p>
-              </div>
+              )}
             </div>
 
             {/* ============= COMPONENT STOCK STATUS ============= */}

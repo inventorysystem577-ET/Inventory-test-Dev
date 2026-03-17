@@ -20,7 +20,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
   const { role } = useAuth();
   const isAdmin = isAdminRole(role);
 
-  const menuItems = [
+  const commonMenuItems = [
     {
       id: "Dashboard",
       label: "Dashboard",
@@ -34,22 +34,10 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
       path: "/view/product-in",
     },
     {
-      id: "Product Out",
-      label: "Product Out",
-      icon: ArrowUpFromLine,
-      path: "/view/product-out",
-    },
-    {
       id: "Parcel Shipped",
       label: "Stock In",
       icon: Package,
       path: "/view/parcel-shipped",
-    },
-    {
-      id: "Parcel Delivery",
-      label: "Stock Out",
-      icon: PackageOpen,
-      path: "/view/parcel-delivery",
     },
     {
       id: "Inventory Stock",
@@ -59,31 +47,50 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
     },
   ];
 
-// In Sidebar.jsx — replace the adminMenuItems and allMenuItems declarations:
+  const adminOnlyMenuItems = isAdmin
+    ? [
+        {
+          id: "Product Out",
+          label: "Product Out",
+          icon: ArrowUpFromLine,
+          path: "/view/product-out",
+        },
+        {
+          id: "Parcel Delivery",
+          label: "Stock Out",
+          icon: PackageOpen,
+          path: "/view/parcel-delivery",
+        },
+      ]
+    : [];
 
-const adminMenuItems = isAdmin
-  ? [
-      {
-        id: "Admin Control Panel",
-        label: "Admin Control Panel",
-        icon: Activity,
-        path: "/view/admin-panel",
-      },
-    ]
-  : [];
+  const adminMenuItems = isAdmin
+    ? [
+        {
+          id: "Admin Control Panel",
+          label: "Admin Control Panel",
+          icon: Activity,
+          path: "/view/admin-panel",
+        },
+      ]
+    : [];
 
-const adminSubItems = isAdmin
-  ? [
-      {
-        id: "User Approvals",
-        label: "Admit Pending Users",
-        icon: UserCheck,
-        path: "/view/user-approvals",
-      },
-    ]
-  : [];
+  const adminSubItems = isAdmin
+    ? [
+        {
+          id: "User Approvals",
+          label: "Admit Pending Users",
+          icon: UserCheck,
+          path: "/view/user-approvals",
+        },
+      ]
+    : [];
 
-const allMenuItems = [...menuItems, ...adminMenuItems];
+  const allMenuItems = [
+    ...commonMenuItems,
+    ...adminOnlyMenuItems,
+    ...adminMenuItems,
+  ];
 
   const handleMenuClick = (path) => {
     router.push(path);
