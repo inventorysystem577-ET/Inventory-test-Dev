@@ -229,6 +229,76 @@ export const handleAddProductOut = async (
   return data;
 };
 
+export const handleAddMultipleProductsOut = async (productsData = [], meta = {}) => {
+  if (!Array.isArray(productsData) || productsData.length === 0) {
+    return { success: false, message: "No products to add" };
+  }
+
+  const results = [];
+  const errors = [];
+
+  for (const product of productsData) {
+    const { product_name, quantity, date, time_out, lineMeta = {} } = product || {};
+    const qtyValue = Number(quantity || 0);
+
+    if (!product_name || qtyValue <= 0 || !date || !time_out) {
+      errors.push({
+        product: product_name || "Unknown",
+        error: "Missing required fields",
+      });
+      continue;
+    }
+
+    const deductResult = await deductProductIn(product_name, parseInt(qtyValue));
+    if (!deductResult.success) {
+      errors.push({
+        product: product_name,
+        error: deductResult.message || "Insufficient stock",
+      });
+      continue;
+    }
+
+    const combinedMeta = { ...meta, ...lineMeta };
+
+    const { data: outRow, error: insertError } = await insertProductOut({
+      product_name,
+      quantity: parseInt(qtyValue),
+      date,
+      time_out,
+      components: deductResult.deductedComponents,
+      shipping_mode: combinedMeta.shipping_mode || null,
+      client_name: combinedMeta.client_name || null,
+      description: deductResult.description || null,
+      price: combinedMeta.price,
+    });
+
+    if (insertError) {
+      errors.push({
+        product: product_name,
+        error: insertError.message || "Failed to create Product OUT record",
+      });
+      continue;
+    }
+
+    results.push({
+      product: product_name,
+      success: true,
+      data: outRow?.[0] || outRow,
+      remainingQuantity: deductResult.remainingQuantity,
+    });
+  }
+
+  return {
+    success: errors.length === 0,
+    results,
+    errors,
+    message:
+      errors.length === 0
+        ? `Successfully added ${results.length} products`
+        : `Added ${results.length} products with ${errors.length} errors`,
+  };
+};
+
 // FETCH PRODUCT OUT
 export const fetchProductOutController = async () => {
   const data = await getProductOut();

@@ -701,8 +701,8 @@ export default function page() {
                     >
                       <tr>
                         {[
-                          "Product",
                           "Code",
+                          "Product",
                           "SKU",
                           "Stock Quantity",
                           "Status",
@@ -736,10 +736,10 @@ export default function page() {
                             className={`${darkMode ? "hover:bg-[#374151]" : "hover:bg-gray-50"}`}
                           >
                             <td className="px-4 py-3 text-sm text-center align-middle">
-                              {item.product_name}
+                              {buildProductCode(item)}
                             </td>
                             <td className="px-4 py-3 text-sm text-center align-middle">
-                              {buildProductCode(item)}
+                              {item.product_name}
                             </td>
                             <td className="px-4 py-3 text-sm text-center align-middle">
                               {buildSku(item)}
@@ -782,7 +782,7 @@ export default function page() {
                       className={`${darkMode ? "bg-[#374151]" : "bg-gray-50"}`}
                     >
                       <tr>
-                        {["Item", "Qty", "Date"].map((head) => (
+                        {["Code", "Product", "Qty", "Date"].map((head) => (
                           <th
                             key={head}
                             className={`px-4 py-2 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-400" : "text-gray-700"}`}
@@ -800,6 +800,9 @@ export default function page() {
                           key={index}
                           className={`${darkMode ? "hover:bg-[#374151]" : "hover:bg-gray-50"}`}
                         >
+                          <td className="px-4 py-3 text-sm text-center align-middle">
+                            {buildProductCode(item, "CMP")}
+                          </td>
                           <td className="px-4 py-3 text-sm text-center align-middle">
                             {item.name}
                           </td>
@@ -827,7 +830,7 @@ export default function page() {
                       className={`${darkMode ? "bg-[#374151]" : "bg-gray-50"}`}
                     >
                       <tr>
-                        {["Item", "Qty", "Date"].map((head) => (
+                        {["Code", "Product", "Qty", "Date"].map((head) => (
                           <th
                             key={head}
                             className={`px-4 py-2 text-center text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-400" : "text-gray-700"}`}
@@ -845,6 +848,9 @@ export default function page() {
                           key={index}
                           className={`${darkMode ? "hover:bg-[#374151]" : "hover:bg-gray-50"}`}
                         >
+                          <td className="px-4 py-3 text-sm text-center align-middle">
+                            {buildProductCode(item, "CMP")}
+                          </td>
                           <td className="px-4 py-3 text-sm text-center align-middle">
                             {item.name}
                           </td>

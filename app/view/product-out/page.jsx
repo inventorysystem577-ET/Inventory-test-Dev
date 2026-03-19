@@ -11,11 +11,13 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import {
   fetchProductOutController,
   fetchProductInController,
   handleAddProductOut,
+  handleAddMultipleProductsOut,
 } from "../../controller/productController";
 import AuthGuard from "../../components/AuthGuard";
 import { buildProductCode, buildSku } from "../../utils/inventoryMeta";
@@ -44,6 +46,12 @@ export default function ProductOutPage() {
   const [expandedDescriptionIds, setExpandedDescriptionIds] = useState(
     () => new Set(),
   );
+  const [bulkOutItems, setBulkOutItems] = useState([
+    { product_name: "", quantity: 1, unitPrice: "" },
+  ]);
+  const [bulkOutMessage, setBulkOutMessage] = useState("");
+  const [bulkOutError, setBulkOutError] = useState("");
+  const [isBulkOutSubmitting, setIsBulkOutSubmitting] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
@@ -204,6 +212,133 @@ export default function ProductOutPage() {
       loadItems();
       loadAvailableProducts();
     }
+  };
+
+  const addBulkOutRow = () => {
+    setBulkOutItems((prev) => [...prev, { product_name: "", quantity: 1, unitPrice: "" }]);
+  };
+
+  const removeBulkOutRow = (indexToRemove) => {
+    setBulkOutItems((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  const updateBulkOutRow = (indexToUpdate, updates = {}) => {
+    setBulkOutItems((prev) =>
+      prev.map((row, index) => {
+        if (index !== indexToUpdate) return row;
+        const nextRow = { ...row, ...updates };
+
+        if (Object.prototype.hasOwnProperty.call(updates, "product_name")) {
+          const selected = availableProducts.find(
+            (p) => p.product_name === updates.product_name,
+          );
+          if (selected) {
+            const avgUnitPrice =
+              selected.price && selected.quantity > 0
+                ? (selected.price / selected.quantity).toFixed(2)
+                : "0.00";
+            nextRow.unitPrice = avgUnitPrice;
+            nextRow.quantity = 1;
+          } else {
+            nextRow.unitPrice = "";
+            nextRow.quantity = 1;
+          }
+        }
+
+        return nextRow;
+      }),
+    );
+  };
+
+  const handleAddMultipleOutItems = async (e) => {
+    e.preventDefault();
+    setBulkOutMessage("");
+    setBulkOutError("");
+
+    if (!date) {
+      setBulkOutError("Please select a date");
+      return;
+    }
+
+    const validRows = bulkOutItems.filter((row) => row?.product_name);
+    if (validRows.length === 0) {
+      setBulkOutError("Add at least one product row.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Confirm Product OUT: Add multiple products to stock out?",
+    );
+    if (!confirmed) return;
+
+    let hour = parseInt(timeHour);
+    if (timeAMPM === "PM" && hour !== 12) hour += 12;
+    if (timeAMPM === "AM" && hour === 12) hour = 0;
+    const formattedTime = `${hour.toString().padStart(2, "0")}:${timeMinute}`;
+
+    const payload = [];
+    const validationErrors = [];
+
+    validRows.forEach((row, index) => {
+      const product_name = row.product_name;
+      const qtyValue = Number(row.quantity || 0);
+      const selected = availableProducts.find((p) => p.product_name === product_name);
+      const max = selected?.quantity || 0;
+
+      if (qtyValue <= 0) {
+        validationErrors.push(`Row ${index + 1}: invalid quantity.`);
+        return;
+      }
+      if (max > 0 && qtyValue > max) {
+        validationErrors.push(`Row ${index + 1}: quantity exceeds stock.`);
+        return;
+      }
+
+      const unit = Number(row.unitPrice || 0);
+      payload.push({
+        product_name,
+        quantity: qtyValue,
+        date,
+        time_out: formattedTime,
+        lineMeta: {
+          price: unit * qtyValue,
+        },
+      });
+    });
+
+    if (payload.length === 0) {
+      setBulkOutError(validationErrors.join(" "));
+      return;
+    }
+
+    setIsBulkOutSubmitting(true);
+
+    const result = await handleAddMultipleProductsOut(payload, {
+      shipping_mode: shippingMode,
+      client_name: clientName,
+    });
+
+    if (validationErrors.length > 0) {
+      setBulkOutError(validationErrors.join(" "));
+    }
+
+    if (!result?.success) {
+      setBulkOutError(result?.message || "Unable to add multiple products.");
+    } else {
+      setBulkOutMessage(result?.message || "Multiple products added.");
+    }
+
+    if (Array.isArray(result?.errors) && result.errors.length > 0) {
+      const first = result.errors[0];
+      setBulkOutError(
+        `${result.message || "Some products failed."} First error: ${first.product} - ${first.error}`,
+      );
+    }
+
+    setBulkOutItems([{ product_name: "", quantity: 1, unitPrice: "" }]);
+    setIsBulkOutSubmitting(false);
+    loadItems();
+    loadAvailableProducts();
   };
 
   const formatTo12Hour = (time) => {
@@ -634,6 +769,222 @@ export default function ProductOutPage() {
               )}
             </form>
 
+            {/* Multiple Product OUT */}
+            <form
+              onSubmit={handleAddMultipleOutItems}
+              className={`p-6 rounded-xl shadow-lg mb-8 border ${
+                darkMode
+                  ? "bg-[#1F2937] border-[#374151]"
+                  : "bg-white border-[#E5E7EB]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                <div>
+                  <h2 className="text-lg font-semibold">Multiple Product OUT</h2>
+                  <p
+                    className={`text-xs ${
+                      darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
+                    }`}
+                  >
+                    Add multiple products in one submission (uses Date/Time and
+                    Shipping/Client fields above).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addBulkOutRow}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                    darkMode
+                      ? "border-[#374151] hover:bg-[#374151]/60 text-[#D1D5DB]"
+                      : "border-[#E5E7EB] hover:bg-gray-50 text-[#374151]"
+                  }`}
+                >
+                  <Plus className="w-4 h-4 inline-block mr-1" />
+                  Add Row
+                </button>
+              </div>
+
+              {bulkOutError && (
+                <div
+                  className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                    darkMode
+                      ? "bg-red-900/20 border-red-800 text-red-300"
+                      : "bg-red-50 border-red-200 text-red-700"
+                  }`}
+                >
+                  {bulkOutError}
+                </div>
+              )}
+
+              {bulkOutMessage && (
+                <div
+                  className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                    darkMode
+                      ? "bg-green-900/20 border-green-800 text-green-300"
+                      : "bg-green-50 border-green-200 text-green-700"
+                  }`}
+                >
+                  {bulkOutMessage}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {bulkOutItems.map((row, index) => {
+                  const selected = availableProducts.find(
+                    (p) => p.product_name === row.product_name,
+                  );
+                  const max = selected?.quantity || 0;
+                  const unit = Number(row.unitPrice || 0);
+                  const qtyValue = Number(row.quantity || 0);
+                  const total = unit * qtyValue;
+
+                  return (
+                    <div
+                      key={index}
+                      className={`grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 rounded-xl border ${
+                        darkMode
+                          ? "border-[#374151] bg-[#111827]/40"
+                          : "border-[#E5E7EB] bg-[#F9FAFB]"
+                      }`}
+                    >
+                      <div className="lg:col-span-5">
+                        <label
+                          className={`block text-xs font-medium mb-1 ${
+                            darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
+                          }`}
+                        >
+                          Product
+                        </label>
+                        <select
+                          value={row.product_name}
+                          onChange={(e) =>
+                            updateBulkOutRow(index, {
+                              product_name: e.target.value,
+                            })
+                          }
+                          className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 ${
+                            darkMode
+                              ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
+                              : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
+                          }`}
+                        >
+                          <option value="">Select a product</option>
+                          {availableProducts.map((product) => (
+                            <option
+                              key={product.product_name}
+                              value={product.product_name}
+                            >
+                              {product.product_name} (Stock: {product.quantity})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="lg:col-span-2">
+                        <label
+                          className={`block text-xs font-medium mb-1 ${
+                            darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
+                          }`}
+                        >
+                          Qty {max > 0 ? `(Max: ${max})` : ""}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={max || 999999}
+                          value={row.quantity}
+                          onChange={(e) =>
+                            updateBulkOutRow(index, {
+                              quantity: Number(e.target.value || 1),
+                            })
+                          }
+                          className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 ${
+                            darkMode
+                              ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
+                              : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
+                          }`}
+                        />
+                      </div>
+
+                      <div className="lg:col-span-2">
+                        <label
+                          className={`block text-xs font-medium mb-1 ${
+                            darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
+                          }`}
+                        >
+                          Unit Price
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={row.unitPrice}
+                          onChange={(e) =>
+                            updateBulkOutRow(index, { unitPrice: e.target.value })
+                          }
+                          className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 ${
+                            darkMode
+                              ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
+                              : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
+                          }`}
+                        />
+                      </div>
+
+                      <div className="lg:col-span-2">
+                        <label
+                          className={`block text-xs font-medium mb-1 ${
+                            darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
+                          }`}
+                        >
+                          Total
+                        </label>
+                        <div
+                          className={`px-3 py-2 rounded-lg border text-sm ${
+                            darkMode
+                              ? "border-[#374151] bg-[#111827] text-white"
+                              : "border-[#D1D5DB] bg-white text-black"
+                          }`}
+                        >
+                          {isNaN(total) ? "-" : `₱${total.toFixed(2)}`}
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-1 flex items-end justify-end">
+                        {bulkOutItems.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => removeBulkOutRow(index)}
+                            className={`p-2 rounded-lg border transition ${
+                              darkMode
+                                ? "border-[#374151] hover:bg-[#374151]/60 text-[#D1D5DB]"
+                                : "border-[#E5E7EB] hover:bg-gray-50 text-[#374151]"
+                            }`}
+                            title="Remove row"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  type="submit"
+                  disabled={isBulkOutSubmitting || availableProducts.length === 0}
+                  className={`px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    darkMode
+                      ? "bg-red-600 hover:bg-red-700 text-white"
+                      : "bg-red-600 hover:bg-red-700 text-white"
+                  }`}
+                >
+                  <Plus className="w-5 h-5" /> Add Multiple Product OUT
+                </button>
+              </div>
+            </form>
+
             <div
               className={`rounded-xl border p-4 mb-4 ${
                 darkMode
@@ -710,14 +1061,14 @@ export default function ProductOutPage() {
                       : "bg-[#F9FAFB] text-[#374151]"
                   }
                 >
-                  <tr>
-                    {[
-                      "Product",
-                      "Code",
-                      "SKU",
-                      "Quantity",
-                      "Date",
-                      "Time Out",
+                    <tr>
+                      {[
+                        "Code",
+                        "Product",
+                        "SKU",
+                        "Quantity",
+                        "Date",
+                        "Time Out",
                       "Shipping",
                       "Client",
                       "Description",
@@ -767,8 +1118,8 @@ export default function ProductOutPage() {
                             : "border-[#E5E7EB] hover:bg-[#F3F4F6]"
                         } transition-colors`}
                       >
-                        <td className="p-3 text-center align-middle font-medium">{item.product_name}</td>
                         <td className="p-3 text-center align-middle">{buildProductCode(item)}</td>
+                        <td className="p-3 text-center align-middle font-medium">{item.product_name}</td>
                         <td className="p-3 text-center align-middle">{buildSku(item)}</td>
                         <td className="p-3 text-center align-middle">
                           <span

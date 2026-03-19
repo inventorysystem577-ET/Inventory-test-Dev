@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Trash2, Package } from "lucide-react";
-import { CATEGORIES, CATEGORY_OPTIONS, getCategoryColor, getCategoryIcon } from "../utils/categoryUtils";
+import { CATEGORIES, CATEGORY_OPTIONS } from "../utils/categoryUtils";
 
 const MultipleProductInput = ({ 
   products, 

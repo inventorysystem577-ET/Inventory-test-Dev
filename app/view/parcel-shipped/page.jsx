@@ -18,10 +18,12 @@ import "animate.css";
 import {
   fetchParcelItems,
   handleAddParcelIn,
+  updateParcelInItemHelper,
 } from "../../utils/parcelShippedHelper";
 import AuthGuard from "../../components/AuthGuard";
 import { products } from "../../utils/productsData";
 import { CATEGORIES, CATEGORY_OPTIONS, getCategoryColor, getCategoryIcon } from "../../utils/categoryUtils";
+import { buildProductCode } from "../../utils/inventoryMeta";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -40,9 +42,10 @@ export default function Page() {
   const [shippingMode, setShippingMode] = useState("");
   const [clientName, setClientName] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState(CATEGORIES.ELECTRONICS);
+  const [category, setCategory] = useState(CATEGORIES.OTHERS);
   const [itemSuggestions, setItemSuggestions] = useState([]);
   const computedTotalPrice = (Number(price) || 0) * (Number(quantity) || 0);
+  const [isUpdatingCategoryId, setIsUpdatingCategoryId] = useState(null);
 
   // Calculate unique items (count of distinct item names)
   const getUniqueItemCount = (itemsList) => {
@@ -54,6 +57,25 @@ export default function Page() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+
+  const handleTransferCategory = async (itemId, nextCategory) => {
+    setIsUpdatingCategoryId(itemId);
+    const updated = await updateParcelInItemHelper(itemId, {
+      category: nextCategory || CATEGORIES.OTHERS,
+    });
+
+    if (updated) {
+      setItems((prev) =>
+        prev.map((row) =>
+          row.id === itemId ? { ...row, category: updated.category } : row,
+        ),
+      );
+    } else {
+      alert("Failed to transfer category.");
+    }
+
+    setIsUpdatingCategoryId(null);
+  };
 
   useEffect(() => {
     if (itemParam) {
@@ -558,17 +580,18 @@ export default function Page() {
                         : "bg-[#F9FAFB] text-[#374151]"
                     }`}
                   >
-                    <tr>
-                      {[
-                        "ITEM NAME",
-                        "CATEGORY",
-                        "DATE",
-                        "QUANTITY",
-                        "TIME IN",
-                        "SHIPPING",
-                        "CLIENT",
-                        "PRICE",
-                      ].map(
+                      <tr>
+                        {[
+                          "CODE",
+                          "PRODUCT",
+                          "CATEGORY",
+                          "DATE",
+                          "QUANTITY",
+                          "TIME IN",
+                          "SHIPPING",
+                          "CLIENT",
+                          "PRICE",
+                        ].map(
                         (head) => (
                           <th
                             key={head}
@@ -585,14 +608,14 @@ export default function Page() {
                       darkMode ? "divide-[#374151]" : "divide-[#E5E7EB]"
                     }
                   >
-                    {currentItems.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan="8"
-                          className={`text-center p-8 sm:p-12 ${
-                            darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
-                          } animate__animated animate__fadeIn`}
-                        >
+                      {currentItems.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan="9"
+                            className={`text-center p-8 sm:p-12 ${
+                              darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
+                            } animate__animated animate__fadeIn`}
+                          >
                           <PackageCheck
                             className={`w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 ${
                               darkMode ? "text-[#6B7280]" : "text-[#D1D5DB]"
@@ -617,16 +640,42 @@ export default function Page() {
                           }`}
                           style={{ animationDelay: `${index * 0.03}s` }}
                         >
+                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm whitespace-nowrap">
+                            {buildProductCode(item, "CMP")}
+                          </td>
                           <td className="p-3 sm:p-4 font-semibold text-sm sm:text-base whitespace-nowrap text-center align-middle">
                             {item.name}
                           </td>
                           <td className="p-3 sm:p-4 text-center align-middle">
-                            <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
-                            >
-                              <span className="mr-1">{getCategoryIcon(item.category)}</span>
-                              {item.category || 'Others'}
-                            </span>
+                            <div className="flex flex-col items-center gap-2">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                              >
+                                <span className="mr-1">
+                                  {getCategoryIcon(item.category)}
+                                </span>
+                                {item.category || "Others"}
+                              </span>
+                              <select
+                                value={item.category || CATEGORIES.OTHERS}
+                                onChange={(e) =>
+                                  handleTransferCategory(item.id, e.target.value)
+                                }
+                                disabled={isUpdatingCategoryId === item.id}
+                                className={`text-xs rounded-lg px-2 py-1 border focus:outline-none focus:ring-2 ${
+                                  darkMode
+                                    ? "bg-[#111827] border-[#374151] text-white focus:ring-[#3B82F6]"
+                                    : "bg-white border-[#D1D5DB] text-black focus:ring-[#1E3A8A]"
+                                }`}
+                                aria-label="Transfer category"
+                              >
+                                {CATEGORY_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.value}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </td>
                           <td className="p-3 sm:p-4 text-sm sm:text-base whitespace-nowrap text-center align-middle">
                             {item.date}

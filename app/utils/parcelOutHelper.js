@@ -114,3 +114,31 @@ export const handleAddParcelOut = async ({
 
   return { newItem, updatedOut, updatedIn };
 };
+
+export const updateParcelOutItemHelper = async (id, updates = {}) => {
+  try {
+    const res = await axios.put("/api/parcelDelivery", { id, updates });
+    const data = res.data;
+    if (!data || data.error) {
+      throw new Error(data?.error || "Failed to update item");
+    }
+
+    return {
+      id: data.id,
+      name: data.item_name,
+      date: data.date,
+      quantity: data.quantity,
+      timeOut: data.time_out,
+      shipping_mode: data.shipping_mode,
+      client_name: data.client_name,
+      price: data.price,
+      category: data.category,
+    };
+  } catch (err) {
+    console.error(
+      "updateParcelOutItemHelper error:",
+      err.response?.data || err.message,
+    );
+    return null;
+  }
+};

@@ -23,21 +23,21 @@ import "animate.css";
 import {
   fetchProductInController,
   handleAddProductIn,
+  handleAddMultipleProductsIn,
   updateProductInDescriptionController,
 } from "../../controller/productController";
 import { products } from "../../utils/productsData";
 import AuthGuard from "../../components/AuthGuard";
 import MissingComponentsModal from "../../components/MissingComponentsModal";
+import MultipleProductInput from "../../components/MultipleProductInput";
 import {
   fetchParcelItems,
   handleAddParcelIn,
 } from "../../utils/parcelShippedHelper";
 import { useAuth } from "../../hook/useAuth";
 import { isAdminRole } from "../../utils/roleHelper";
-import {
-  buildProductCode,
-  buildSku,
-} from "../../utils/inventoryMeta";
+import { buildProductCode, buildSku } from "../../utils/inventoryMeta";
+import { CATEGORIES } from "../../utils/categoryUtils";
 
 export default function ProductInPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -103,6 +103,18 @@ export default function ProductInPage() {
   const [customComponents, setCustomComponents] = useState([
     { name: "", quantity: "" },
   ]);
+  const [bulkProducts, setBulkProducts] = useState([
+    {
+      product_name: "",
+      quantity: 1,
+      description: "",
+      price: 0,
+      category: CATEGORIES.OTHERS,
+      components: [],
+      customComponents: [{ name: "", quantity: "" }],
+    },
+  ]);
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [customComponentsError, setCustomComponentsError] = useState("");
   const [expandedDescriptionIds, setExpandedDescriptionIds] = useState(
     () => new Set(),
@@ -119,7 +131,9 @@ export default function ProductInPage() {
   const normalizeName = (value = "") =>
     value.toString().trim().toLowerCase().replace(/\s+/g, " ");
   const descriptionSuggestions = Array.from(
-    new Set(items.map((item) => (item.description || "").trim()).filter(Boolean)),
+    new Set(
+      items.map((item) => (item.description || "").trim()).filter(Boolean),
+    ),
   ).sort((a, b) => a.localeCompare(b));
 
   const computeComponentAvailability = (
@@ -202,8 +216,12 @@ export default function ProductInPage() {
     const existingNames = sanitizedData
       .map((item) => item.product_name)
       .filter(Boolean);
-    const predefinedNames = products.map((product) => product.name).filter(Boolean);
-    const unique = Array.from(new Set([...predefinedNames, ...existingNames])).sort();
+    const predefinedNames = products
+      .map((product) => product.name)
+      .filter(Boolean);
+    const unique = Array.from(
+      new Set([...predefinedNames, ...existingNames]),
+    ).sort();
     setProductSuggestions(unique);
   };
 
@@ -212,7 +230,10 @@ export default function ProductInPage() {
     const text = (value || "").toString().trim();
     if (!text) return { text: "", isTruncated: false };
     if (text.length <= maxLength) return { text, isTruncated: false };
-    return { text: `${text.slice(0, maxLength).trimEnd()}...`, isTruncated: true };
+    return {
+      text: `${text.slice(0, maxLength).trimEnd()}...`,
+      isTruncated: true,
+    };
   };
 
   const toggleDescriptionExpanded = (id) => {
@@ -318,8 +339,7 @@ export default function ProductInPage() {
     const quantityToAdd = parseInt(qty);
     const normalizedSelectedProduct = selectedProduct.trim();
     const product = products.find(
-      (p) =>
-        normalizeName(p.name) === normalizeName(normalizedSelectedProduct),
+      (p) => normalizeName(p.name) === normalizeName(normalizedSelectedProduct),
     );
 
     const time_in = `${timeHour}:${timeMinute} ${timeAMPM}`;
@@ -359,9 +379,7 @@ export default function ProductInPage() {
   const handleCustomComponentChange = (indexToUpdate, field, value) => {
     setCustomComponents((prev) =>
       prev.map((component, index) =>
-        index === indexToUpdate
-          ? { ...component, [field]: value }
-          : component,
+        index === indexToUpdate ? { ...component, [field]: value } : component,
       ),
     );
   };
@@ -551,6 +569,14 @@ export default function ProductInPage() {
       }))
       .filter((component) => component.name && component.quantity > 0);
 
+  const sanitizeBulkCustomComponents = (rows = []) =>
+    (rows || [])
+      .map((component) => ({
+        name: (component?.name || "").trim(),
+        quantity: Number(component?.quantity),
+      }))
+      .filter((component) => component.name && component.quantity > 0);
+
   const submitProductIn = async ({
     productName,
     quantityToAdd,
@@ -628,11 +654,158 @@ export default function ProductInPage() {
     setShowCustomComponentsModal(false);
   };
 
+  const handleAddMultipleItems = async (e) => {
+    e.preventDefault();
+    if (!Array.isArray(bulkProducts) || bulkProducts.length === 0) {
+      setErrorBar("Add at least one product row.");
+      return;
+    }
+
+    if (!date) {
+      setErrorBar("Select a date first.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Confirm Product In: Add multiple products to stock in?",
+    );
+    if (!confirmed) return;
+
+    setErrorBar("");
+    setSuccessBar("");
+    setAlternativeRequest(null);
+    setIsBulkSubmitting(true);
+
+    const time_in = `${timeHour}:${timeMinute} ${timeAMPM}`;
+
+    const payload = [];
+    const validationErrors = [];
+
+    bulkProducts.forEach((row, index) => {
+      const productName = (row?.product_name || "").toString().trim();
+      const quantityToAdd = Number(row?.quantity || 0);
+
+      if (!productName) {
+        validationErrors.push(`Row ${index + 1}: missing product name.`);
+        return;
+      }
+
+      if (quantityToAdd <= 0) {
+        validationErrors.push(`Row ${index + 1}: invalid quantity.`);
+        return;
+      }
+
+      const config = products.find(
+        (p) => normalizeName(p.name) === normalizeName(productName),
+      );
+
+      let components = [];
+
+      if (config) {
+        components = (config.components || []).map((c) => ({
+          name: c.name,
+          quantity: Number(c.baseQty || 0) * quantityToAdd,
+        }));
+      } else {
+        if (!isAdmin) {
+          validationErrors.push(
+            `Row ${index + 1}: only admin can add a new/custom product (${productName}).`,
+          );
+          return;
+        }
+
+        const custom = sanitizeBulkCustomComponents(row?.customComponents);
+        if (custom.length === 0) {
+          validationErrors.push(
+            `Row ${index + 1}: custom product needs at least one component (${productName}).`,
+          );
+          return;
+        }
+
+        components = custom;
+      }
+
+      const unitPrice = Number(row?.price || 0);
+      const lineTotalPrice = unitPrice * quantityToAdd;
+
+      payload.push({
+        product_name: productName,
+        quantity: quantityToAdd,
+        date,
+        time_in,
+        components,
+        meta: {
+          description: (row?.description || "").toString().trim() || null,
+          price: lineTotalPrice,
+          category: row?.category || CATEGORIES.OTHERS,
+        },
+      });
+    });
+
+    if (payload.length === 0) {
+      setErrorBar(validationErrors.join(" "));
+      setIsBulkSubmitting(false);
+      return;
+    }
+
+    const result = await handleAddMultipleProductsIn(payload);
+
+    if (validationErrors.length > 0) {
+      setErrorBar(validationErrors.join(" "));
+    }
+
+    if (!result?.success) {
+      setErrorBar(result?.message || "Unable to add multiple products.");
+    } else {
+      setSuccessBar(result?.message || "Multiple products added.");
+    }
+
+    if (Array.isArray(result?.errors) && result.errors.length > 0) {
+      const first = result.errors[0];
+      const extra =
+        first?.missingComponents?.length > 0
+          ? ` Missing: ${first.missingComponents.map((c) => c.name).join(", ")}.`
+          : "";
+      setErrorBar(
+        `${result.message || "Some products failed."} First error: ${first.product} - ${first.error}.${extra}`,
+      );
+    }
+
+    await loadItems();
+    await loadStockInItems();
+
+    setBulkProducts([
+      {
+        product_name: "",
+        quantity: 1,
+        description: "",
+        price: 0,
+        category: CATEGORIES.OTHERS,
+        components: [],
+        customComponents: [{ name: "", quantity: "" }],
+      },
+    ]);
+
+    setIsBulkSubmitting(false);
+  };
+
   const selectedProductConfig = products.find(
     (p) => normalizeName(p.name) === normalizeName(selectedProduct),
   );
   const noDefinedComponents =
     (selectedProductConfig?.components || []).length === 0;
+
+  // ── Table column definitions ──────────────────────────────────────────────
+  const TABLE_COLUMNS = [
+    { label: "PRODUCT CODE", thClass: "text-center w-[140px] min-w-[140px]" },
+    { label: "PRODUCT NAME", thClass: "text-center w-[150px] min-w-[150px]" },
+    { label: "SKU", thClass: "text-center w-[130px] min-w-[130px]" },
+    { label: "DESCRIPTION", thClass: "text-left  w-[320px] min-w-[280px]" },
+    { label: "QUANTITY", thClass: "text-center w-[100px] min-w-[100px]" },
+    { label: "DATE", thClass: "text-center w-[120px] min-w-[120px]" },
+    { label: "TIME IN", thClass: "text-center w-[110px] min-w-[110px]" },
+    { label: "COMPONENTS", thClass: "text-center w-[180px] min-w-[150px]" },
+  ];
 
   return (
     <AuthGuard darkMode={darkMode}>
@@ -977,7 +1150,58 @@ export default function ProductInPage() {
               </div>
             </form>
 
-            {/* Product Table */}
+            {/* Multiple Product Input */}
+            <form
+              onSubmit={handleAddMultipleItems}
+              className={`p-6 rounded-xl shadow-lg mb-8 border transition animate__animated animate__fadeInUp animate__faster ${
+                darkMode
+                  ? "bg-[#1F2937] border-[#374151]"
+                  : "bg-white border-[#E5E7EB]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    Multiple Product Input
+                  </h2>
+                  <p
+                    className={`text-xs ${
+                      darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
+                    }`}
+                  >
+                    Add multiple products in one submission (uses the Date/Time
+                    above).
+                  </p>
+                </div>
+              </div>
+
+              <MultipleProductInput
+                products={bulkProducts}
+                setProducts={setBulkProducts}
+                productSuggestions={productSuggestions}
+                items={items}
+                normalizeName={normalizeName}
+                computeComponentAvailability={computeComponentAvailability}
+              />
+
+              <div className="flex justify-end mt-6">
+                <button
+                  type="submit"
+                  disabled={isBulkSubmitting}
+                  className={`px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg ${
+                    isBulkSubmitting
+                      ? darkMode
+                        ? "bg-[#374151] text-[#9CA3AF] cursor-not-allowed"
+                        : "bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed"
+                      : "bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white"
+                  }`}
+                >
+                  <Plus className="w-5 h-5" /> Add Multiple Products
+                </button>
+              </div>
+            </form>
+
+            {/* ── Product Table ──────────────────────────────────────────── */}
             <div
               className={`rounded-xl shadow-xl overflow-hidden border transition animate__animated animate__fadeInUp animate__fast ${
                 darkMode
@@ -986,7 +1210,9 @@ export default function ProductInPage() {
               }`}
             >
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px] table-fixed">
+                {/* KEY FIX: removed table-fixed, set a wide min-width so
+                    the browser can size each column by its content */}
+                <table className="w-full min-w-[1100px] border-collapse">
                   <thead
                     className={`${
                       darkMode
@@ -995,25 +1221,12 @@ export default function ProductInPage() {
                     }`}
                   >
                     <tr>
-                      {[
-                        "PRODUCT NAME",
-                        "PRODUCT CODE",
-                        "SKU",
-                        "DESCRIPTION",
-                        "QUANTITY",
-                        "DATE",
-                        "TIME IN",
-                        "COMPONENTS",
-                      ].map((head) => (
+                      {TABLE_COLUMNS.map(({ label, thClass }) => (
                         <th
-                          key={head}
-                          className={`p-3 sm:p-4 text-xs sm:text-sm font-semibold whitespace-nowrap ${
-                            head === "DESCRIPTION"
-                              ? "text-left min-w-[22rem] w-[28rem]"
-                              : "text-center"
-                          }`}
+                          key={label}
+                          className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${thClass}`}
                         >
-                          {head}
+                          {label}
                         </th>
                       ))}
                     </tr>
@@ -1026,7 +1239,7 @@ export default function ProductInPage() {
                     {currentItems.length === 0 ? (
                       <tr>
                         <td
-                          colSpan="8"
+                          colSpan={TABLE_COLUMNS.length}
                           className={`text-center p-8 sm:p-12 ${
                             darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
                           } animate__animated animate__fadeIn`}
@@ -1055,16 +1268,23 @@ export default function ProductInPage() {
                           }`}
                           style={{ animationDelay: `${index * 0.03}s` }}
                         >
-                          <td className="p-3 sm:p-4 text-center align-middle font-semibold text-sm sm:text-base whitespace-nowrap">
-                            {item.product_name}
-                          </td>
-                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm whitespace-nowrap">
+                          {/* PRODUCT CODE */}
+                          <td className="px-4 py-3 text-center align-middle text-xs sm:text-sm whitespace-nowrap w-[140px] min-w-[140px]">
                             {buildProductCode(item)}
                           </td>
-                          <td className="p-3 sm:p-4 text-center align-middle text-xs sm:text-sm whitespace-nowrap">
+
+                          {/* PRODUCT NAME */}
+                          <td className="px-4 py-3 text-center align-middle font-semibold text-sm sm:text-base whitespace-nowrap w-[150px] min-w-[150px]">
+                            {item.product_name}
+                          </td>
+
+                          {/* SKU */}
+                          <td className="px-4 py-3 text-center align-middle text-xs sm:text-sm whitespace-nowrap w-[130px] min-w-[130px]">
                             {buildSku(item)}
                           </td>
-                          <td className="p-3 sm:p-4 align-middle text-xs sm:text-sm min-w-[22rem] w-[28rem]">
+
+                          {/* DESCRIPTION */}
+                          <td className="px-4 py-3 align-middle text-xs sm:text-sm w-[320px] min-w-[280px]">
                             {editingDescriptionId === item.id ? (
                               <div className="flex flex-col gap-2">
                                 <textarea
@@ -1084,7 +1304,9 @@ export default function ProductInPage() {
                                   <button
                                     type="button"
                                     disabled={isSavingDescription}
-                                    onClick={() => saveEditingDescription(item.id)}
+                                    onClick={() =>
+                                      saveEditingDescription(item.id)
+                                    }
                                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold ${
                                       isSavingDescription
                                         ? darkMode
@@ -1194,7 +1416,9 @@ export default function ProductInPage() {
                               </div>
                             )}
                           </td>
-                          <td className="p-3 sm:p-4 text-center align-middle">
+
+                          {/* QUANTITY */}
+                          <td className="px-4 py-3 text-center align-middle w-[100px] min-w-[100px]">
                             <span
                               className={`px-2 sm:px-3 py-1 rounded-lg font-bold text-xs sm:text-sm ${
                                 darkMode
@@ -1205,15 +1429,22 @@ export default function ProductInPage() {
                               {item.quantity}
                             </span>
                           </td>
-                          <td className="p-3 sm:p-4 whitespace-nowrap text-center align-middle">
+
+                          {/* DATE */}
+                          <td className="px-4 py-3 whitespace-nowrap text-center align-middle text-xs sm:text-sm w-[120px] min-w-[120px]">
                             {item.date}
                           </td>
-                          <td className="p-3 sm:p-4 whitespace-nowrap text-center align-middle">
-                            <div className="flex items-center justify-center gap-2">
-                              <Clock size={14} /> {formatTo12Hour(item.time_in)}
+
+                          {/* TIME IN */}
+                          <td className="px-4 py-3 whitespace-nowrap text-center align-middle text-xs sm:text-sm w-[110px] min-w-[110px]">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Clock size={13} />
+                              {formatTo12Hour(item.time_in)}
                             </div>
                           </td>
-                          <td className="p-3 sm:p-4 text-center align-middle">
+
+                          {/* COMPONENTS */}
+                          <td className="px-4 py-3 text-center align-middle w-[180px] min-w-[150px]">
                             {item.components.length > 0 ? (
                               <div className="flex flex-wrap justify-center gap-1">
                                 {item.components.map((c, i) => (
@@ -1235,7 +1466,7 @@ export default function ProductInPage() {
                                   darkMode ? "text-gray-500" : "text-gray-400"
                                 }
                               >
-                                -
+                                —
                               </span>
                             )}
                           </td>
@@ -1331,6 +1562,8 @@ export default function ProductInPage() {
           </div>
         </main>
       </div>
+
+      {/* ── Modals ──────────────────────────────────────────────────────── */}
       <MissingComponentsModal
         show={showMissingComponentsModal}
         onClose={() => setShowMissingComponentsModal(false)}
@@ -1339,6 +1572,7 @@ export default function ProductInPage() {
         onAddToStockIn={handleAddMissingToStockIn}
         isAdding={isAddingMissingStock}
       />
+
       {showCustomComponentsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
@@ -1398,7 +1632,11 @@ export default function ProductInPage() {
                       type="text"
                       value={component.name}
                       onChange={(e) =>
-                        handleCustomComponentChange(index, "name", e.target.value)
+                        handleCustomComponentChange(
+                          index,
+                          "name",
+                          e.target.value,
+                        )
                       }
                       placeholder="Component name"
                       className={`col-span-7 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition-all ${
@@ -1468,6 +1706,7 @@ export default function ProductInPage() {
           </div>
         </div>
       )}
+
       {showComponentStockModal && selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div

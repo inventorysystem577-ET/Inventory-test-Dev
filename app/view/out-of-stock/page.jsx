@@ -15,6 +15,9 @@ import {
   TrendingDown,
   XCircle,
   Package,
+  PencilLine,
+  Check,
+  X,
   FileText,
   FileSpreadsheet,
   FileJson,
@@ -30,6 +33,7 @@ import {
   fetchProductInController,
   clearProductInInventory,
   clearProductOutHistory,
+  updateProductInDescriptionController,
 } from "../../controller/productController";
 import { fetchParcelItems } from "../../utils/parcelShippedHelper";
 import { fetchParcelOutItems } from "../../utils/parcelOutHelper";
@@ -58,6 +62,7 @@ import {
   getProductIn,
   getProductInByName,
   updateProductInQuantity,
+  updateProductIn,
   deleteProductInByName,
 } from "../../models/productModel";
 
@@ -90,6 +95,74 @@ export default function Page() {
   const [productCategoryFilter, setProductCategoryFilter] = useState("all");
   const { role } = useAuth();
   const isAdmin = isAdminRole(role);
+  const [isUpdatingCategoryId, setIsUpdatingCategoryId] = useState(null);
+  const [categoryTransferError, setCategoryTransferError] = useState("");
+  const [descriptionUpdateError, setDescriptionUpdateError] = useState("");
+  const [expandedDescriptionIds, setExpandedDescriptionIds] = useState(
+    () => new Set(),
+  );
+  const [editingDescriptionId, setEditingDescriptionId] = useState(null);
+  const [editingDescriptionValue, setEditingDescriptionValue] = useState("");
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
+
+  const DESCRIPTION_TRUNCATE_LIMIT = 140;
+  const truncateText = (value, maxLength) => {
+    const text = (value || "").toString().trim();
+    if (!text) return { text: "", isTruncated: false };
+    if (text.length <= maxLength) return { text, isTruncated: false };
+    return {
+      text: `${text.slice(0, maxLength).trimEnd()}...`,
+      isTruncated: true,
+    };
+  };
+
+  const toggleDescriptionExpanded = (id) => {
+    setExpandedDescriptionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const startEditingDescription = (item) => {
+    setDescriptionUpdateError("");
+    setEditingDescriptionId(item.id);
+    setEditingDescriptionValue((item.description || "").toString());
+  };
+
+  const cancelEditingDescription = () => {
+    setEditingDescriptionId(null);
+    setEditingDescriptionValue("");
+  };
+
+  const saveEditingDescription = async (id) => {
+    setDescriptionUpdateError("");
+    setIsSavingDescription(true);
+
+    const result = await updateProductInDescriptionController(
+      id,
+      editingDescriptionValue,
+    );
+
+    if (!result?.success) {
+      setDescriptionUpdateError(
+        result?.message || "Failed to update description.",
+      );
+      setIsSavingDescription(false);
+      return;
+    }
+
+    setProductItems((prev) =>
+      prev.map((row) =>
+        row.id === id
+          ? { ...row, description: result?.data?.description ?? editingDescriptionValue }
+          : row,
+      ),
+    );
+    cancelEditingDescription();
+    setIsSavingDescription(false);
+  };
 
   // Import states
   const [showImportModal, setShowImportModal] = useState(false);
@@ -251,6 +324,40 @@ export default function Page() {
         sku.includes(keyword))
     );
   });
+
+  const transferCategory = async ({ type, id, nextCategory }) => {
+    setCategoryTransferError("");
+    setIsUpdatingCategoryId(id);
+    const categoryValue = nextCategory || CATEGORIES.OTHERS;
+
+    try {
+      if (type === "parcel") {
+        const result = await updateParcelInItem(id, { category: categoryValue });
+        if (result?.error) throw result.error;
+        setParcelItems((prev) =>
+          prev.map((row) =>
+            row.id === id ? { ...row, category: categoryValue } : row,
+          ),
+        );
+      }
+
+      if (type === "product") {
+        const result = await updateProductIn(id, { category: categoryValue });
+        if (result?.error) throw result.error;
+        setProductItems((prev) =>
+          prev.map((row) =>
+            row.id === id ? { ...row, category: categoryValue } : row,
+          ),
+        );
+      }
+    } catch (err) {
+      setCategoryTransferError(
+        err?.message || "Failed to transfer category. Please try again.",
+      );
+    } finally {
+      setIsUpdatingCategoryId(null);
+    }
+  };
 
   const parcelStatusCounts = {
     out: parcelItems.filter((item) => item.quantity === 0).length,
@@ -922,6 +1029,30 @@ export default function Page() {
               </div>
             )}
 
+            {categoryTransferError && (
+              <div
+                className={`p-3 rounded-xl mb-6 border animate__animated animate__fadeInDown ${
+                  darkMode
+                    ? "bg-red-900/20 border-red-800 text-red-300"
+                    : "bg-red-50 border-red-200 text-red-700"
+                }`}
+              >
+                {categoryTransferError}
+              </div>
+            )}
+
+            {descriptionUpdateError && (
+              <div
+                className={`p-3 rounded-xl mb-6 border animate__animated animate__fadeInDown ${
+                  darkMode
+                    ? "bg-red-900/20 border-red-800 text-red-300"
+                    : "bg-red-50 border-red-200 text-red-700"
+                }`}
+              >
+                {descriptionUpdateError}
+              </div>
+            )}
+
             {/* ============= PARCEL SECTION ============= */}
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
@@ -1095,8 +1226,8 @@ export default function Page() {
                     >
                       <tr>
                         {[
-                          "Item Name",
-                          "Product Code",
+                          "Code",
+                          "Product",
                           "SKU",
                           "Description",
                           "Category",
@@ -1143,6 +1274,9 @@ export default function Page() {
                             key={index}
                             className={`transition-colors ${darkMode ? "hover:bg-[#374151]" : "hover:bg-[#F9FAFB]"}`}
                           >
+                            <td className="px-4 py-3 text-sm">
+                              {buildProductCode(item, "CMP")}
+                            </td>
                             <td className="px-4 py-3 text-sm font-medium align-top">
                               <div className="flex items-start gap-2 min-w-0">
                                 <div
@@ -1154,21 +1288,112 @@ export default function Page() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm">
-                              {buildProductCode(item, "CMP")}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
                               {buildSku(item)}
                             </td>
-                            <td className="px-4 py-3 text-sm">
-                              {buildDescription(item) || "-"}
+                            <td className="px-4 py-3 text-sm min-w-[22rem] w-[28rem] align-top">
+                              {(() => {
+                                const raw = buildDescription(item);
+                                if (!raw) return "-";
+
+                                const expanded = expandedDescriptionIds.has(
+                                  `parcel-${item.id}`,
+                                );
+                                if (expanded) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        toggleDescriptionExpanded(`parcel-${item.id}`)
+                                      }
+                                      className={`text-left whitespace-pre-wrap break-words ${
+                                        darkMode
+                                          ? "text-gray-200 hover:text-white"
+                                          : "text-gray-800 hover:text-black"
+                                      }`}
+                                      title="Click to collapse"
+                                    >
+                                      {raw}
+                                    </button>
+                                  );
+                                }
+
+                                const truncated = truncateText(
+                                  raw,
+                                  DESCRIPTION_TRUNCATE_LIMIT,
+                                );
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleDescriptionExpanded(`parcel-${item.id}`)
+                                    }
+                                    className={`text-left break-words ${
+                                      darkMode
+                                        ? "text-gray-200 hover:text-white"
+                                        : "text-gray-800 hover:text-black"
+                                    }`}
+                                    title="Click to expand"
+                                  >
+                                    {truncated.text}
+                                    {truncated.isTruncated ? (
+                                      <span
+                                        className={`ml-2 text-[11px] font-semibold ${
+                                          darkMode
+                                            ? "text-blue-300"
+                                            : "text-blue-600"
+                                        }`}
+                                      >
+                                        View more
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-3 text-sm">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
-                              >
-                                <span>{getCategoryIcon(item.category)}</span>
-                                {item.category || "Uncategorized"}
-                              </span>
+                              {isAdmin ? (
+                                <div className="flex flex-col gap-2">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                                  >
+                                    <span>{getCategoryIcon(item.category)}</span>
+                                    {item.category || "Others"}
+                                  </span>
+                                  <select
+                                    value={item.category || CATEGORIES.OTHERS}
+                                    onChange={(e) =>
+                                      transferCategory({
+                                        type: "parcel",
+                                        id: item.id,
+                                        nextCategory: e.target.value,
+                                      })
+                                    }
+                                    disabled={isUpdatingCategoryId === item.id}
+                                    className={`w-fit text-xs rounded-lg px-2 py-1 border focus:outline-none focus:ring-2 ${
+                                      darkMode
+                                        ? "bg-[#111827] border-[#374151] text-white focus:ring-[#3B82F6]"
+                                        : "bg-white border-[#D1D5DB] text-black focus:ring-[#1E3A8A]"
+                                    }`}
+                                    aria-label="Transfer category"
+                                  >
+                                    {CATEGORY_OPTIONS.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.value}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                                >
+                                  <span>{getCategoryIcon(item.category)}</span>
+                                  {item.category || "Others"}
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units
@@ -1381,8 +1606,8 @@ export default function Page() {
                     >
                       <tr>
                         {[
-                          "Product Name",
-                          "Product Code",
+                          "Code",
+                          "Product",
                           "SKU",
                           "Description",
                           "Category",
@@ -1429,6 +1654,9 @@ export default function Page() {
                             key={index}
                             className={`transition-colors ${darkMode ? "hover:bg-[#374151]" : "hover:bg-[#F9FAFB]"}`}
                           >
+                            <td className="px-4 py-3 text-sm">
+                              {buildProductCode(item)}
+                            </td>
                             <td className="px-4 py-3 text-sm font-medium align-top">
                               <div className="flex items-start gap-2 min-w-0">
                                 <div
@@ -1440,21 +1668,182 @@ export default function Page() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm">
-                              {buildProductCode(item)}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
                               {buildSku(item)}
                             </td>
-                            <td className="px-4 py-3 text-sm">
-                              {buildDescription(item) || "-"}
+                            <td className="px-4 py-3 text-sm min-w-[22rem] w-[28rem] align-top">
+                              {editingDescriptionId === item.id ? (
+                                <div className="flex flex-col gap-2">
+                                  <textarea
+                                    value={editingDescriptionValue}
+                                    onChange={(e) =>
+                                      setEditingDescriptionValue(e.target.value)
+                                    }
+                                    rows={3}
+                                    className={`w-full rounded-lg p-2 text-xs sm:text-sm border ${
+                                      darkMode
+                                        ? "bg-[#111827] border-[#374151] text-white"
+                                        : "bg-white border-[#E5E7EB] text-black"
+                                    }`}
+                                    placeholder="Type a description..."
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={isSavingDescription}
+                                      onClick={() => saveEditingDescription(item.id)}
+                                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold ${
+                                        isSavingDescription
+                                          ? darkMode
+                                            ? "bg-[#374151] text-[#9CA3AF] cursor-not-allowed"
+                                            : "bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed"
+                                          : "bg-[#16A34A] text-white hover:bg-[#15803D]"
+                                      }`}
+                                    >
+                                      <Check className="w-4 h-4" /> Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isSavingDescription}
+                                      onClick={cancelEditingDescription}
+                                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold ${
+                                        darkMode
+                                          ? "bg-[#374151] text-[#D1D5DB] hover:bg-[#4B5563]"
+                                          : "bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]"
+                                      }`}
+                                    >
+                                      <X className="w-4 h-4" /> Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start gap-2">
+                                  <button
+                                    type="button"
+                                    className={`text-left break-words leading-relaxed ${
+                                      darkMode
+                                        ? "text-gray-200 hover:text-white"
+                                        : "text-gray-800 hover:text-black"
+                                    }`}
+                                    onClick={() => {
+                                      if (!buildDescription(item)) return;
+                                      toggleDescriptionExpanded(`product-${item.id}`);
+                                    }}
+                                    title={
+                                      expandedDescriptionIds.has(`product-${item.id}`)
+                                        ? "Click to collapse"
+                                        : "Click to expand"
+                                    }
+                                  >
+                                    {(() => {
+                                      const raw = buildDescription(item);
+                                      if (!raw) {
+                                        return (
+                                          <span
+                                            className={
+                                              darkMode
+                                                ? "text-gray-500"
+                                                : "text-gray-400"
+                                            }
+                                          >
+                                            No description
+                                          </span>
+                                        );
+                                      }
+
+                                      const expanded = expandedDescriptionIds.has(
+                                        `product-${item.id}`,
+                                      );
+                                      if (expanded) {
+                                        return (
+                                          <span className="whitespace-pre-wrap">
+                                            {raw}
+                                          </span>
+                                        );
+                                      }
+
+                                      const truncated = truncateText(
+                                        raw,
+                                        DESCRIPTION_TRUNCATE_LIMIT,
+                                      );
+                                      return (
+                                        <span>
+                                          {truncated.text}
+                                          {truncated.isTruncated ? (
+                                            <span
+                                              className={`ml-2 text-[11px] font-semibold ${
+                                                darkMode
+                                                  ? "text-blue-300"
+                                                  : "text-blue-600"
+                                              }`}
+                                            >
+                                              View more
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      );
+                                    })()}
+                                  </button>
+                                  {isAdmin ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditingDescription(item)}
+                                      className={`p-2 rounded-lg border transition ${
+                                        darkMode
+                                          ? "border-[#374151] hover:bg-[#374151]/60"
+                                          : "border-[#E5E7EB] hover:bg-[#F3F4F6]"
+                                      }`}
+                                      title="Edit description"
+                                    >
+                                      <PencilLine className="w-4 h-4" />
+                                    </button>
+                                  ) : null}
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-sm">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
-                              >
-                                <span>{getCategoryIcon(item.category)}</span>
-                                {item.category || "Uncategorized"}
-                              </span>
+                              {isAdmin ? (
+                                <div className="flex flex-col gap-2">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                                  >
+                                    <span>{getCategoryIcon(item.category)}</span>
+                                    {item.category || "Others"}
+                                  </span>
+                                  <select
+                                    value={item.category || CATEGORIES.OTHERS}
+                                    onChange={(e) =>
+                                      transferCategory({
+                                        type: "product",
+                                        id: item.id,
+                                        nextCategory: e.target.value,
+                                      })
+                                    }
+                                    disabled={isUpdatingCategoryId === item.id}
+                                    className={`w-fit text-xs rounded-lg px-2 py-1 border focus:outline-none focus:ring-2 ${
+                                      darkMode
+                                        ? "bg-[#111827] border-[#374151] text-white focus:ring-[#3B82F6]"
+                                        : "bg-white border-[#D1D5DB] text-black focus:ring-[#1E3A8A]"
+                                    }`}
+                                    aria-label="Transfer category"
+                                  >
+                                    {CATEGORY_OPTIONS.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.value}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getCategoryColor(item.category)}`}
+                                >
+                                  <span>{getCategoryIcon(item.category)}</span>
+                                  {item.category || "Others"}
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               {item.quantity} units
@@ -1653,7 +2042,8 @@ export default function Page() {
                         }
                       >
                         <tr>
-                          <th className="px-3 py-2 text-left">Item Name</th>
+                          <th className="px-3 py-2 text-left">Code</th>
+                          <th className="px-3 py-2 text-left">Product</th>
                           <th className="px-3 py-2 text-left">Qty</th>
                           <th className="px-3 py-2 text-left">Status</th>
                         </tr>
@@ -1663,6 +2053,12 @@ export default function Page() {
                       >
                         {importPreview.components.slice(0, 5).map((item, i) => (
                           <tr key={i}>
+                            <td className="px-3 py-2">
+                              {item.product_name ? buildProductCode(item) : "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {item.name ? buildProductCode(item, "CMP") : "-"}
+                            </td>
                             <td className="px-3 py-2">{item.name || "—"}</td>
                             <td className="px-3 py-2">{item.quantity}</td>
                             <td className="px-3 py-2">
@@ -1677,7 +2073,7 @@ export default function Page() {
                         {importPreview.components.length > 5 && (
                           <tr>
                             <td
-                              colSpan={3}
+                              colSpan={4}
                               className={`px-3 py-2 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                             >
                               +{importPreview.components.length - 5} more items
@@ -1708,7 +2104,8 @@ export default function Page() {
                         }
                       >
                         <tr>
-                          <th className="px-3 py-2 text-left">Product Name</th>
+                          <th className="px-3 py-2 text-left">Code</th>
+                          <th className="px-3 py-2 text-left">Product</th>
                           <th className="px-3 py-2 text-left">Qty</th>
                           <th className="px-3 py-2 text-left">Status</th>
                         </tr>
@@ -1734,7 +2131,7 @@ export default function Page() {
                         {importPreview.products.length > 5 && (
                           <tr>
                             <td
-                              colSpan={3}
+                              colSpan={4}
                               className={`px-3 py-2 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}
                             >
                               +{importPreview.products.length - 5} more items

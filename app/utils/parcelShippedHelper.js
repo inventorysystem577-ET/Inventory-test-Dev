@@ -95,3 +95,31 @@ export const handleAddParcelIn = async ({
   const items = await fetchParcelItems();
   return { newItem, items };
 };
+
+export const updateParcelInItemHelper = async (id, updates = {}) => {
+  try {
+    const res = await axios.put("/api/parcelShipped", { id, updates });
+    const data = res.data;
+    if (!data || data.error) {
+      throw new Error(data?.error || "Failed to update item");
+    }
+
+    return {
+      id: data.id,
+      name: data.item_name,
+      date: data.date,
+      quantity: data.quantity,
+      timeIn: data.time_in,
+      shipping_mode: data.shipping_mode,
+      client_name: data.client_name,
+      price: data.price,
+      category: data.category,
+    };
+  } catch (err) {
+    console.error(
+      "updateParcelInItemHelper error:",
+      err.response?.data || err.message,
+    );
+    return null;
+  }
+};
