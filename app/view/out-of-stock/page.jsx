@@ -820,7 +820,7 @@ export default function Page() {
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
 
     doc.setFontSize(14);
-    doc.text("Components Stock Status", 14, 40);
+    doc.text("Stock Status", 14, 40);
     autoTable(doc, {
       startY: 45,
       head: [["Item Name", "Stock Quantity", "Status", "Date Added"]],
@@ -837,7 +837,7 @@ export default function Page() {
 
     const finalY = doc.lastAutoTable.finalY || 45;
     doc.setFontSize(14);
-    doc.text("Product Inventory Status", 14, finalY + 15);
+    doc.text("EROVOUTIKA Product Status", 14, finalY + 15);
     autoTable(doc, {
       startY: finalY + 20,
       head: [["Product Name", "Stock Quantity", "Status", "Date Added"]],
@@ -890,11 +890,11 @@ export default function Page() {
     );
 
     const csv = [
-      "COMPONENTS STOCK STATUS",
+      "STOCK STATUS",
       "Item Name,Stock Quantity,Status,Date Added",
       ...parcelRows,
       "",
-      "PRODUCT INVENTORY STATUS",
+      "EROVOUTIKA PRODUCT STATUS",
       "Product Name,Stock Quantity,Status,Date Added",
       ...productRows,
     ].join("\n");
@@ -968,12 +968,12 @@ export default function Page() {
       <body>
         <h1>Inventory Report</h1>
         <p class="generated">Generated: ${new Date().toLocaleString()}</p>
-        <h2>Components Stock Status</h2>
+        <h2>Stock Status</h2>
         <table>
           <thead><tr><th>Item Name</th><th>Stock Quantity</th><th>Status</th><th>Date Added</th></tr></thead>
           <tbody>${parcelRows}</tbody>
         </table>
-        <h2>Product Inventory Status</h2>
+        <h2>EROVOUTIKA Product Status</h2>
         <table>
           <thead><tr><th>Product Name</th><th>Stock Quantity</th><th>Status</th><th>Date Added</th></tr></thead>
           <tbody>${productRows}</tbody>
@@ -1231,7 +1231,7 @@ export default function Page() {
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Package className="w-6 h-6 text-[#1e40af]" />
-                <h2 className="text-xl font-bold">Components Stock Status</h2>
+                <h2 className="text-xl font-bold">Stock Status</h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1650,7 +1650,7 @@ export default function Page() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Box className="w-6 h-6 text-[#7c3aed]" />
-                <h2 className="text-xl font-bold">Product Inventory Status</h2>
+                <h2 className="text-xl font-bold">EROVOUTIKA Product Status</h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
