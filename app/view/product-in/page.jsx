@@ -37,11 +37,12 @@ import {
 import { useAuth } from "../../hook/useAuth";
 import { isAdminRole } from "../../utils/roleHelper";
 import { buildProductCode, buildSku } from "../../utils/inventoryMeta";
-import { CATEGORIES } from "../../utils/categoryUtils";
+import { CATEGORIES, CATEGORY_OPTIONS } from "../../utils/categoryUtils";
 
 export default function ProductInPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("product-in");
+  const [showMultipleInput, setShowMultipleInput] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
   const searchParams = useSearchParams();
@@ -51,6 +52,7 @@ export default function ProductInPage() {
   const [stockInItems, setStockInItems] = useState([]);
   const [productSuggestions, setProductSuggestions] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [singleCategory, setSingleCategory] = useState(CATEGORIES.OTHERS);
   const [description, setDescription] = useState("");
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState(0);
@@ -438,6 +440,7 @@ export default function ProductInPage() {
       {
         description: alternativeRequest.description || description,
         price: totalPrice,
+        category: alternativeRequest.category || singleCategory,
       },
       { allowAlternatives: true },
     );
@@ -476,6 +479,7 @@ export default function ProductInPage() {
     await loadStockInItems();
 
     setSelectedProduct("");
+    setSingleCategory(CATEGORIES.OTHERS);
     setQty(1);
     setPrice(0);
     setDate("");
@@ -618,6 +622,7 @@ export default function ProductInPage() {
     dateValue,
     timeInValue,
     components,
+    categoryValue,
   }) => {
     setErrorBar("");
     setSuccessBar("");
@@ -632,6 +637,7 @@ export default function ProductInPage() {
       {
         description: description.trim(),
         price: totalPrice,
+        category: categoryValue || singleCategory,
       },
     );
 
@@ -644,6 +650,7 @@ export default function ProductInPage() {
           time_in: timeInValue,
           components,
           description: description.trim(),
+          category: categoryValue || singleCategory,
           alternatives: result.alternativeOptions || [],
         });
         return;
@@ -657,6 +664,7 @@ export default function ProductInPage() {
           dateValue,
           timeInValue,
           components,
+          categoryValue: categoryValue || singleCategory,
         });
         setShowMissingComponentsModal(true);
         setErrorBar("");
@@ -686,6 +694,7 @@ export default function ProductInPage() {
     await loadStockInItems();
 
     setSelectedProduct("");
+    setSingleCategory(CATEGORIES.OTHERS);
     setDescription("");
     setQty(1);
     setPrice(0);
@@ -1016,6 +1025,7 @@ export default function ProductInPage() {
             </div>
 
             {/* Add Item Form */}
+            {!showMultipleInput && (
             <form
               onSubmit={handleAddItem}
               className={`p-6 rounded-xl shadow-lg mb-8 border transition animate__animated animate__fadeInUp animate__faster ${
@@ -1196,7 +1206,7 @@ export default function ProductInPage() {
                 </div>
 
                 {/* Date */}
-                <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 lg:ml-2 xl:ml-4">
+                <div className="lg:col-span-1">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -1212,13 +1222,39 @@ export default function ProductInPage() {
                       darkMode
                         ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
                         : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
-                    } min-w-[180px]`}
+                    } min-w-[150px]`}
                     required
                   />
                 </div>
 
+                {/* Category */}
+                <div className="md:col-span-2 lg:col-span-2 xl:col-span-2">
+                  <label
+                    className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
+                      darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
+                    }`}
+                  >
+                    <Package className="w-4 h-4" /> Category
+                  </label>
+                  <select
+                    value={singleCategory}
+                    onChange={(e) => setSingleCategory(e.target.value)}
+                    className={`border rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 transition-all ${
+                      darkMode
+                        ? "border-[#374151] focus:ring-[#3B82F6] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#1E3A8A] bg-white text-black"
+                    }`}
+                  >
+                    {CATEGORY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Time In */}
-                <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 lg:ml-2 xl:ml-4">
+                <div className="md:col-span-2 lg:col-span-2 xl:col-span-2">
                   <label
                     className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${
                       darkMode ? "text-[#D1D5DB]" : "text-[#374151]"
@@ -1276,7 +1312,18 @@ export default function ProductInPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMultipleInput(true)}
+                  className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+                    darkMode
+                      ? "bg-[#374151] text-[#D1D5DB] hover:bg-[#4B5563]"
+                      : "bg-[#E5E7EB] text-[#374151] hover:bg-[#D1D5DB]"
+                  }`}
+                >
+                  Multiple Product Input
+                </button>
                 <button
                   type="submit"
                   className="bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
@@ -1285,8 +1332,10 @@ export default function ProductInPage() {
                 </button>
               </div>
             </form>
+            )}
 
             {/* Multiple Product Input */}
+            {showMultipleInput && (
             <div
               className={`p-6 rounded-xl shadow-lg mb-8 border transition animate__animated animate__fadeInUp animate__faster ${
                 darkMode
@@ -1307,6 +1356,17 @@ export default function ProductInPage() {
                     Add multiple products in one submission with per-row date and time.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMultipleInput(false)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    darkMode
+                      ? "bg-[#374151] text-[#D1D5DB] hover:bg-[#4B5563]"
+                      : "bg-[#E5E7EB] text-[#374151] hover:bg-[#D1D5DB]"
+                  }`}
+                >
+                  Back to Single Product
+                </button>
               </div>
 
               <MultipleProductInput
@@ -1335,6 +1395,7 @@ export default function ProductInPage() {
                 </button>
               </div>
             </div>
+            )}
 
             {/* ── Product Table ──────────────────────────────────────────── */}
             <div

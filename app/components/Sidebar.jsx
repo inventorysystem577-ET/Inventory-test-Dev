@@ -34,35 +34,43 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
       path: "/view/product-in",
     },
     {
-      id: "Parcel Shipped",
-      label: "Stock In",
-      icon: Package,
-      path: "/view/parcel-shipped",
-    },
-    {
       id: "Inventory Stock",
       label: "Inventory",
       icon: Activity,
       path: "/view/out-of-stock",
     },
+    {
+      id: "Parcel Shipped",
+      label: "Stock In",
+      icon: Package,
+      path: "/view/parcel-shipped",
+    },
   ];
 
-  const adminOnlyMenuItems = isAdmin
-    ? [
-        {
-          id: "Product Out",
-          label: "Product Out",
-          icon: ArrowUpFromLine,
-          path: "/view/product-out",
-        },
-        {
-          id: "Parcel Delivery",
-          label: "Stock Out",
-          icon: PackageOpen,
-          path: "/view/parcel-delivery",
-        },
-      ]
-    : [];
+  const orderedMenuItems = [
+    ...commonMenuItems.slice(0, 2),
+    ...(isAdmin
+      ? [
+          {
+            id: "Product Out",
+            label: "Product Out",
+            icon: ArrowUpFromLine,
+            path: "/view/product-out",
+          },
+        ]
+      : []),
+    ...commonMenuItems.slice(2),
+    ...(isAdmin
+      ? [
+          {
+            id: "Parcel Delivery",
+            label: "Stock Out",
+            icon: PackageOpen,
+            path: "/view/parcel-delivery",
+          },
+        ]
+      : []),
+  ];
 
   const adminMenuItems = isAdmin
     ? [
@@ -93,8 +101,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
     : [];
 
   const allMenuItems = [
-    ...commonMenuItems,
-    ...adminOnlyMenuItems,
+    ...orderedMenuItems,
     ...adminMenuItems,
   ];
 
