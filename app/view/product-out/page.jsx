@@ -3,6 +3,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import TopNavbar from "../../components/TopNavbar";
+import { logActivity } from "../../utils/logActivity";
 import Sidebar from "../../components/Sidebar";
 import {
   PackageCheck,
@@ -59,7 +60,7 @@ export default function ProductOutPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
-  const { role } = useAuth();
+  const { role, displayName, userEmail } = useAuth();
   const isAdmin = isAdminRole(role);
 
   const DESCRIPTION_TRUNCATE_LIMIT = 120;
@@ -192,9 +193,18 @@ export default function ProductOutPage() {
     );
 
     if (result) {
-      setProductName("");
-      setQuantity(1);
-      setMaxQuantity(0);
+  await logActivity({
+    userId: userEmail || null,
+    userName: displayName || userEmail || "Unknown User",
+    userType: role || "staff",
+    action: "Product OUT",
+    module: "Inventory",
+    details: `Removed ${quantity}x ${productName}`,
+  });
+
+  setProductName("");
+  setQuantity(1);
+  setMaxQuantity(0);
 
       const now = new Date();
       const today = now.toISOString().split("T")[0];

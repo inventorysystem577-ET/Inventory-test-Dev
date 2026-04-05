@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import TopNavbar from "../../components/TopNavbar";
+import { logActivity } from "../../utils/logActivity";
 import Sidebar from "../../components/Sidebar";
 import {
   PackageCheck,
@@ -155,7 +156,7 @@ export default function ProductInPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
-  const { role } = useAuth();
+  const { role, displayName, userEmail } = useAuth();
   const isAdmin = isAdminRole(role);
 
   const normalizeName = (value = "") =>
@@ -498,6 +499,15 @@ export default function ProductInPage() {
     setPendingProductInRequest(null);
     await loadItems();
     await loadStockInItems();
+
+    await logActivity({
+      userId: userEmail || null,
+      userName: displayName || userEmail || "Unknown User",
+      userType: role || "staff",
+      action: "Product IN",
+      module: "Inventory",
+      details: `Added ${quantityToAdd}x ${productName}`,
+    });
 
     setSelectedProduct("");
     setSingleCategory(PRODUCT_CATEGORIES.OTHER);
