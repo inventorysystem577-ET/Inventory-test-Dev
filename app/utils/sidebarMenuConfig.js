@@ -1,6 +1,7 @@
 import {
   Activity,
   ArrowDownToLine,
+  ArrowLeftRight,
   ArrowUpFromLine,
   BarChart3,
   Package,
@@ -12,6 +13,7 @@ import {
 export const SIDEBAR_ICON_MAP = {
   Activity,
   ArrowDownToLine,
+  ArrowLeftRight,
   ArrowUpFromLine,
   BarChart3,
   Package,
@@ -36,6 +38,12 @@ export const DEFAULT_ADMIN_SIDEBAR_ITEMS = [
     label: "Product In",
     iconKey: "ArrowDownToLine",
     path: "/view/product-in",
+  },
+  {
+    id: "Stock Transfer",
+    label: "Stock Transfer",
+    iconKey: "ArrowLeftRight",
+    path: "/view/stock-transfer",
   },
   {
     id: "Product Out",
@@ -69,6 +77,12 @@ export const DEFAULT_STAFF_SIDEBAR_ITEMS = [
     label: "Monitoring and Adding",
     iconKey: "ArrowDownToLine",
     path: "/view/product-in",
+  },
+  {
+    id: "Stock Transfer",
+    label: "Stock Transfer",
+    iconKey: "ArrowLeftRight",
+    path: "/view/stock-transfer",
   },
 ];
 

@@ -8,6 +8,7 @@ import {
   LogOut,
   ArrowDownToLine,
   ArrowUpFromLine,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { handleLogout } from "../controller/logoutController";
@@ -34,6 +35,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
       path: "/view/product-in",
     },
     {
+      id: "Stock Transfer",
+      label: "Stock Transfer",
+      icon: ArrowLeftRight,
+      path: "/view/stock-transfer",
+    },
+    {
       id: "Inventory Stock",
       label: "Inventory",
       icon: Activity,
@@ -48,7 +55,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
   ];
 
   const orderedMenuItems = [
-    ...commonMenuItems.slice(0, 2),
+    ...commonMenuItems.slice(0, 3),
     ...(isAdmin
       ? [
           {
@@ -59,7 +66,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
           },
         ]
       : []),
-    ...commonMenuItems.slice(2),
+    ...commonMenuItems.slice(3),
     ...(isAdmin
       ? [
           {
