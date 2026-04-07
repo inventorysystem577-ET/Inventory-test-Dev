@@ -40,10 +40,10 @@ export const DEFAULT_ADMIN_SIDEBAR_ITEMS = [
     path: "/view/product-in",
   },
   {
-    id: "Stock Transfer",
-    label: "Stock Transfer",
+    id: "Item Transfer",
+    label: "Item Transfer",
     iconKey: "ArrowLeftRight",
-    path: "/view/stock-transfer",
+    path: "/view/item-transfer",
   },
   {
     id: "Product Out",
@@ -79,10 +79,10 @@ export const DEFAULT_STAFF_SIDEBAR_ITEMS = [
     path: "/view/product-in",
   },
   {
-    id: "Stock Transfer",
-    label: "Stock Transfer",
+    id: "Item Transfer",
+    label: "Item Transfer",
     iconKey: "ArrowLeftRight",
-    path: "/view/stock-transfer",
+    path: "/view/item-transfer",
   },
 ];
 

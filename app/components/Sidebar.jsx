@@ -21,7 +21,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
   const { role } = useAuth();
   const isAdmin = isAdminRole(role);
 
-  const commonMenuItems = [
+  const orderedMenuItems = [
     {
       id: "Dashboard",
       label: "Dashboard",
@@ -34,28 +34,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
       icon: ArrowDownToLine,
       path: "/view/product-in",
     },
-    {
-      id: "Stock Transfer",
-      label: "Stock Transfer",
-      icon: ArrowLeftRight,
-      path: "/view/stock-transfer",
-    },
-    {
-      id: "Inventory Stock",
-      label: "Inventory",
-      icon: Activity,
-      path: "/view/out-of-stock",
-    },
-    {
-      id: "Parcel Shipped",
-      label: "Stock In",
-      icon: Package,
-      path: "/view/parcel-shipped",
-    },
-  ];
-
-  const orderedMenuItems = [
-    ...commonMenuItems.slice(0, 3),
     ...(isAdmin
       ? [
           {
@@ -66,7 +44,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
           },
         ]
       : []),
-    ...commonMenuItems.slice(3),
+    {
+      id: "Parcel Shipped",
+      label: "Stock In",
+      icon: Package,
+      path: "/view/parcel-shipped",
+    },
     ...(isAdmin
       ? [
           {
@@ -77,6 +60,18 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, darkMode }) {
           },
         ]
       : []),
+    {
+      id: "Item Transfer",
+      label: "Item Transfer",
+      icon: ArrowLeftRight,
+      path: "/view/item-transfer",
+    },
+    {
+      id: "Inventory Stock",
+      label: "Inventory",
+      icon: Activity,
+      path: "/view/out-of-stock",
+    },
   ];
 
   const adminMenuItems = isAdmin

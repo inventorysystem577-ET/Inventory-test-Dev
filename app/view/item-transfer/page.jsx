@@ -160,6 +160,16 @@ export default function StockTransferPage() {
     }
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    if (!message) return;
+
+    const timeoutId = setTimeout(() => {
+      setMessage("");
+    }, 3000);
+
+    return () => clearTimeout(timeoutId);
+  }, [message]);
+
   const setFormType = (type) => {
     setForm((prev) => ({
       ...prev,
@@ -264,7 +274,7 @@ export default function StockTransferPage() {
   const handleDeleteRecord = (recordId) => {
     if (!isAdmin) return;
 
-    const confirmed = window.confirm("Delete this stock transfer record?");
+    const confirmed = window.confirm("Delete this item transfer record?");
     if (!confirmed) return;
 
     setRecords((prev) => prev.filter((record) => record.id !== recordId));
@@ -401,7 +411,7 @@ export default function StockTransferPage() {
                       darkMode ? "text-[#3B82F6]" : "text-[#1E3A8A]"
                     }`}
                   />
-                  <h1 className="text-3xl font-bold tracking-wide">Stock Transfer</h1>
+                  <h1 className="text-3xl font-bold tracking-wide">Item Transfer</h1>
                 </div>
                 <div
                   className={`flex-1 h-[2px] ${
@@ -414,7 +424,7 @@ export default function StockTransferPage() {
                   darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
                 }`}
               >
-                Front-end stock transfer tracker for admin and staff
+                Front-end item transfer tracker for admin and staff
               </p>
             </div>
 
@@ -441,7 +451,7 @@ export default function StockTransferPage() {
 
                 {message && (
                   <div
-                    className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                    className={`mb-4 rounded-lg border px-4 py-3 text-sm text-center ${
                       darkMode
                         ? "bg-green-900/20 border-green-800 text-green-300"
                         : "bg-green-50 border-green-200 text-green-700"
@@ -469,13 +479,10 @@ export default function StockTransferPage() {
                       setError("");
                       setMessage("");
                     }}
-                    className={`px-6 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                      darkMode
-                        ? "bg-[#374151] text-[#D1D5DB] hover:bg-[#4B5563]"
-                        : "bg-[#E5E7EB] text-[#374151] hover:bg-[#D1D5DB]"
-                    }`}
+                    className="px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 bg-[#38b559] text-white hover:bg-[#42d469] shadow-md hover:shadow-lg"
                   >
-                    Multiple Product Input
+                  <Plus className="w-5 h-5" />
+                  Add Multiple Item Input
                   </button>
 
                   {editingId && (
@@ -496,7 +503,7 @@ export default function StockTransferPage() {
                     type="submit"
                     className="bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
                   >
-                    <Plus className="w-5 h-5" /> {editingId ? "Edit Record" : "Add Record"}
+                    <Plus className="w-5 h-5" /> {editingId ? "Edit Item" : "Add Item"}
                   </button>
                 </div>
               </form>
@@ -524,7 +531,7 @@ export default function StockTransferPage() {
 
                 {message && (
                   <div
-                    className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+                    className={`mb-4 rounded-lg border px-4 py-3 text-sm text-center ${
                       darkMode
                         ? "bg-green-900/20 border-green-800 text-green-300"
                         : "bg-green-50 border-green-200 text-green-700"
@@ -536,13 +543,13 @@ export default function StockTransferPage() {
 
                 <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
                   <div>
-                    <h2 className="text-lg font-semibold">Multiple Product Input</h2>
+                    <h2 className="text-lg font-semibold">Multiple Item Input</h2>
                     <p
                       className={`text-xs ${
                         darkMode ? "text-[#9CA3AF]" : "text-[#6B7280]"
                       }`}
                     >
-                      Add multiple stock transfer records in one submission.
+                      Add multiple Item Transfer records in one submission.
                     </p>
                   </div>
                   <button
@@ -552,11 +559,7 @@ export default function StockTransferPage() {
                       setError("");
                       setMessage("");
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      darkMode
-                        ? "bg-[#374151] text-[#D1D5DB] hover:bg-[#4B5563]"
-                        : "bg-[#E5E7EB] text-[#374151] hover:bg-[#D1D5DB]"
-                    }`}
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-[#38b559] text-white hover:bg-[#42d469] shadow-sm hover:shadow-md"
                   >
                     Back to Single Product
                   </button>
@@ -620,9 +623,9 @@ export default function StockTransferPage() {
                   <button
                     type="button"
                     onClick={handleAddBulkRecords}
-                    className="bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
+                    className="bg-[#38b559] hover:bg-[#42d469] text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all duration-200 hover:shadow-lg"
                   >
-                    <Plus className="w-5 h-5" /> Add Multiple Records
+                    <Plus className="w-5 h-5" /> Add Multiple Items
                   </button>
                 </div>
               </div>
