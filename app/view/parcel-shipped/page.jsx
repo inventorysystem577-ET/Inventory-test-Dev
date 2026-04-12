@@ -24,6 +24,8 @@ import {
 import AuthGuard from "../../components/AuthGuard";
 import { useAuth } from "../../hook/useAuth";
 import { isAdminRole } from "../../utils/roleHelper";
+import useBulkStockInForm from "../../hook/useBulkStockInForm";
+import StockInBulkRow from "../../components/StockInBulkRow";
 import { products } from "../../utils/productsData";
 import { CATEGORIES, CATEGORY_OPTIONS, getCategoryColor, getCategoryIcon } from "../../utils/categoryUtils";
 import { buildProductCode } from "../../utils/inventoryMeta";
@@ -50,8 +52,24 @@ export default function Page() {
   const computedTotalPrice = (Number(price) || 0) * (Number(quantity) || 0);
   const [isUpdatingCategoryId, setIsUpdatingCategoryId] = useState(null);
   const [showStockInHistory, setShowStockInHistory] = useState(false);
+  const [showMultipleInput, setShowMultipleInput] = useState(false);
   const { role, displayName, userEmail } = useAuth();
   const isAdmin = isAdminRole(role);
+
+  const {
+    bulkRows,
+    addRow,
+    removeRow,
+    updateRow,
+    handleBulkSubmit,
+    error: bulkError,
+    message: bulkMessage,
+  } = useBulkStockInForm({
+    onSuccess: async () => {
+      await loadItems();
+    },
+    actor: { role, displayName, userEmail },
+  });
 
   // Calculate unique items (count of distinct item names)
   const getUniqueItemCount = (itemsList) => {
@@ -297,6 +315,7 @@ export default function Page() {
             </div>
 
             {/* Form */}
+            {!showMultipleInput && (
             <form
               onSubmit={handleAddItem}
               className={`p-6 rounded-xl shadow-lg mb-8 border transition animate__animated animate__fadeInUp animate__faster ${
@@ -546,7 +565,14 @@ export default function Page() {
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end items-center gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowMultipleInput(true)}
+                  className="bg-[#22C55E] hover:bg-[#16A34A] text-white px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+                >
+                  <Plus className="w-5 h-5" /> Multiple Items
+                </button>
                 <button
                   type="submit"
                   className="bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
@@ -555,6 +581,70 @@ export default function Page() {
                 </button>
               </div>
             </form>
+            )}
+
+            {showMultipleInput && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleBulkSubmit();
+                }}
+                className={`p-6 rounded-xl shadow-lg mb-8 border transition animate__animated animate__fadeInUp animate__faster ${
+                  darkMode
+                    ? "bg-[#1F2937] border-[#374151] text-white"
+                    : "bg-white border-[#E5E7EB] text-[#111827]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                  <h2 className="text-lg font-semibold">Multiple Stock In</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowMultipleInput(false)}
+                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-[#22C55E] hover:bg-[#16A34A] text-white shadow-sm hover:shadow-md"
+                    >
+                      Back to Single Input
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addRow}
+                      className="bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Add Row
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {bulkRows.map((row, index) => (
+                    <StockInBulkRow
+                      key={`stock-in-row-${index}`}
+                      row={row}
+                      index={index}
+                      onChange={updateRow}
+                      onRemove={removeRow}
+                      darkMode={darkMode}
+                    />
+                  ))}
+                </div>
+
+                {bulkError && (
+                  <p className="mt-4 text-sm font-medium text-[#DC2626]">{bulkError}</p>
+                )}
+                {bulkMessage && (
+                  <p className="mt-4 text-sm font-medium text-[#16A34A]">{bulkMessage}</p>
+                )}
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    type="submit"
+                    className="bg-[#1E3A8A] hover:bg-[#1D4ED8] text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+                  >
+                    <Plus className="w-5 h-5" /> Submit Multiple Items
+                  </button>
+                </div>
+              </form>
+            )}
 
             {isAdmin && (
               <div

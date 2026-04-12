@@ -15,6 +15,8 @@ import {
   updateParcelOutItemHelper,
 } from "../../utils/parcelOutHelper";
 import { fetchParcelItems } from "../../utils/parcelShippedHelper";
+import useBulkStockOutForm from "../../hook/useBulkStockOutForm";
+import StockOutBulkRow from "../../components/StockOutBulkRow";
 import { CATEGORIES, CATEGORY_OPTIONS, getCategoryColor, getCategoryIcon } from "../../utils/categoryUtils";
 import { buildProductCode } from "../../utils/inventoryMeta";
 
@@ -39,6 +41,7 @@ export default function Page() {
   const computedTotalPrice = (Number(price) || 0) * (Number(quantity) || 0);
   const [isUpdatingCategoryId, setIsUpdatingCategoryId] = useState(null);
   const [showStockOutHistory, setShowStockOutHistory] = useState(false);
+  const [showMultipleInput, setShowMultipleInput] = useState(false);
 
   const handleTransferCategory = async (itemId, nextCategory) => {
     setIsUpdatingCategoryId(itemId);
@@ -90,16 +93,32 @@ export default function Page() {
       .sort((a, b) => b.quantity - a.quantity);
   };
 
+  const loadStockOutData = async () => {
+    const outItems = await fetchParcelOutItems();
+    setItems(outItems);
+    const inItems = await fetchParcelItems();
+    setAvailableItems(aggregateAvailableItems(inItems));
+  };
+
+  const {
+    bulkRows,
+    addRow,
+    removeRow,
+    updateRow,
+    handleBulkSubmit,
+    error: bulkError,
+    message: bulkMessage,
+  } = useBulkStockOutForm({
+    onSuccess: async () => {
+      await loadStockOutData();
+    },
+    actor: { role, displayName, userEmail },
+    availableItems,
+  });
+
   useEffect(() => {
     const savedDarkMode = localStorage.getItem("darkMode");
     if (savedDarkMode !== null) setDarkMode(savedDarkMode === "true");
-
-    const loadItems = async () => {
-      const outItems = await fetchParcelOutItems();
-      setItems(outItems);
-      const inItems = await fetchParcelItems();
-      setAvailableItems(aggregateAvailableItems(inItems));
-    };
 
     const now = new Date();
     let hour = now.getHours();
@@ -112,7 +131,7 @@ export default function Page() {
     setTimeHour(hour.toString());
     setTimeMinute(formattedMinute);
     setTimeAMPM(ampm);
-    loadItems();
+    loadStockOutData();
   }, []);
 
   const formatTo12Hour = (time) => {
@@ -230,7 +249,7 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                 <div className="flex items-center gap-2 px-3">
                   <PackageOpen
                     className={`w-6 h-6 ${
-                      darkMode ? "text-[#F97316]" : "text-[#EA580C]"
+                      darkMode ? "text-[#EF4444]" : "text-[#DC2626]"
                     }`}
                   />
                   <h1 className="text-3xl font-bold tracking-wide">
@@ -253,6 +272,7 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
             </div>
 
             {/* Add Item Form */}
+            {!showMultipleInput && (
             <form
               onSubmit={handleAddItem}
               className={`p-6 rounded-xl shadow-lg mb-8 border animate__animated animate__fadeInUp ${
@@ -264,7 +284,7 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
               <div className="flex items-center gap-2 mb-5">
                 <Plus
                   className={`w-5 h-5 ${
-                    darkMode ? "text-[#F97316]" : "text-[#EA580C]"
+                    darkMode ? "text-[#EF4444]" : "text-[#DC2626]"
                   }`}
                 />
                 <h2
@@ -294,8 +314,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     }}
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                     }`}
                     required
                   >
@@ -325,8 +345,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     onChange={(e) => setDate(e.target.value)}
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                     }`}
                     required
                   />
@@ -350,8 +370,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     disabled={!selectedItemId || !canAddParcelOut}
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white disabled:bg-[#0B0B0B] disabled:opacity-50 disabled:cursor-not-allowed"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black disabled:bg-[#F3F4F6] disabled:opacity-50 disabled:cursor-not-allowed"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white disabled:bg-[#0B0B0B] disabled:opacity-50 disabled:cursor-not-allowed"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black disabled:bg-[#F3F4F6] disabled:opacity-50 disabled:cursor-not-allowed"
                     }`}
                     required
                   />
@@ -392,8 +412,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                       onChange={(e) => setTimeHour(e.target.value)}
                       className={`border rounded-lg px-2 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                         darkMode
-                          ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                          : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                          ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                          : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                       }`}
                     >
                       {Array.from({ length: 12 }, (_, i) => (
@@ -407,8 +427,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                       onChange={(e) => setTimeMinute(e.target.value)}
                       className={`border rounded-lg px-2 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                         darkMode
-                          ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                          : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                          ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                          : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                       }`}
                     >
                       {Array.from({ length: 60 }, (_, i) => {
@@ -425,8 +445,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                       onChange={(e) => setTimeAMPM(e.target.value)}
                       className={`border rounded-lg px-2 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                         darkMode
-                          ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                          : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                          ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                          : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                       }`}
                     >
                       <option>AM</option>
@@ -451,8 +471,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     onChange={(e) => setCategory(e.target.value)}
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                     }`}
                     required
                   >
@@ -478,8 +498,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     placeholder="Shopee (J&T)"
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                     }`}
                   />
                   <p
@@ -505,8 +525,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     placeholder="Client name"
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                     }`}
                   />
                 </div>
@@ -527,19 +547,26 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                     placeholder="0.00"
                     className={`border rounded-lg px-3 py-2.5 w-full focus:outline-none focus:ring-2 transition-all ${
                       darkMode
-                        ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                        : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                        ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                        : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                     }`}
                   />
                 </div>
               </div>
 
               {/* Submit */}
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end items-center gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowMultipleInput(true)}
+                  className="bg-[#22C55E] hover:bg-[#16A34A] text-white px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+                >
+                  <Plus className="w-5 h-5" /> Multiple Items
+                </button>
                 <button
                   type="submit"
                   disabled={!canAddParcelOut}
-                  className={`bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:from-[#EA580C] hover:to-[#C2410C] text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg ${
+                  className={`bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg ${
                     canAddParcelOut
                       ? "animate__animated animate__pulse animate__infinite animate__slow"
                       : "opacity-50 cursor-not-allowed"
@@ -549,6 +576,77 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                 </button>
               </div>
             </form>
+            )}
+
+            {showMultipleInput && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleBulkSubmit();
+                }}
+                className={`p-6 rounded-xl shadow-lg mb-8 border animate__animated animate__fadeInUp ${
+                  darkMode
+                    ? "bg-[#1F2937] border-[#374151]"
+                    : "bg-white border-[#E5E7EB]"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                  <h2
+                    className={`text-lg font-semibold ${
+                      darkMode ? "text-white" : "text-[#111827]"
+                    }`}
+                  >
+                    Multiple Stock Out
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowMultipleInput(false)}
+                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-[#22C55E] hover:bg-[#16A34A] text-white shadow-sm hover:shadow-md"
+                    >
+                      Back to Single Input
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addRow}
+                      className="bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Add Row
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {bulkRows.map((row, index) => (
+                    <StockOutBulkRow
+                      key={`stock-out-row-${index}`}
+                      row={row}
+                      index={index}
+                      onChange={updateRow}
+                      onRemove={removeRow}
+                      darkMode={darkMode}
+                      availableItems={availableItems}
+                    />
+                  ))}
+                </div>
+
+                {bulkError && (
+                  <p className="mt-4 text-sm font-medium text-[#DC2626]">{bulkError}</p>
+                )}
+                {bulkMessage && (
+                  <p className="mt-4 text-sm font-medium text-[#16A34A]">{bulkMessage}</p>
+                )}
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    type="submit"
+                    className="bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white px-6 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+                  >
+                    <Plus className="w-5 h-5" /> Submit Multiple Items
+                  </button>
+                </div>
+              </form>
+            )}
 
             <div
               className={`rounded-xl shadow-xl overflow-hidden border mb-4 ${
@@ -586,8 +684,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                 onChange={(e) => setSelectedFilter(e.target.value)}
                 className={`border rounded-lg px-3 py-2 w-60 focus:outline-none focus:ring-2 transition-all ${
                   darkMode
-                    ? "border-[#374151] focus:ring-[#F97316] focus:border-[#F97316] bg-[#111827] text-white"
-                    : "border-[#D1D5DB] focus:ring-[#EA580C] focus:border-[#EA580C] bg-white text-black"
+                    ? "border-[#374151] focus:ring-[#EF4444] focus:border-[#EF4444] bg-[#111827] text-white"
+                    : "border-[#D1D5DB] focus:ring-[#DC2626] focus:border-[#DC2626] bg-white text-black"
                 }`}
               >
                 <option value="">All Items</option>
@@ -753,8 +851,8 @@ setAvailableItems(aggregateAvailableItems(result.updatedIn || []));
                             <span
                               className={`inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold ${
                                 darkMode
-                                  ? "bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/30"
-                                  : "bg-[#FFEDD5] text-[#EA580C] border border-[#FED7AA]"
+                                  ? "bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30"
+                                  : "bg-[#FFEDD5] text-[#DC2626] border border-[#FED7AA]"
                               }`}
                             >
                               {item.quantity} units

@@ -531,7 +531,7 @@ export default function ProductOutPage() {
                 ></div>
                 <div className="flex items-center gap-2 px-3">
                   <PackageCheck
-                    className={`w-6 h-6 ${darkMode ? "text-[#3B82F6]" : "text-[#1E3A8A]"}`}
+                    className={`w-6 h-6 ${darkMode ? "text-[#EF4444]" : "text-[#DC2626]"}`}
                   />
                   <h1 className="text-3xl font-bold tracking-wide">
                     Product OUT
@@ -775,8 +775,9 @@ export default function ProductOutPage() {
                 <button
                   type="button"
                   onClick={() => setShowMultipleOutInput(true)}
-                  className="px-6 py-2.5 rounded-lg font-medium transition-all duration-200 bg-[#38b559] text-white hover:bg-[#42d469] shadow-md hover:shadow-lg"
+                  className="px-6 py-2.5 rounded-lg font-medium transition-all duration-200 bg-[#38b559] text-white hover:bg-[#42d469] shadow-md hover:shadow-lg flex items-center gap-2"
                 >
+                  <Plus className="w-5 h-5 text-[#3B82F6]" />
                   Multiple Product OUT
                 </button>
                 <button
